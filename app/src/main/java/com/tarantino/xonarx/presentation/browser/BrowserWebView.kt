@@ -19,6 +19,8 @@ class BrowserWebView(
     private val onDownloadStarted: (String, String) -> Unit = { _, _ -> }
 ) : WebView(context) {
 
+    var onPageUpdate: ((String, String?) -> Unit)? = null
+
     private val gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
         private val SWIPE_THRESHOLD = 200
         private val SWIPE_VELOCITY_THRESHOLD = 200
@@ -62,7 +64,9 @@ class BrowserWebView(
             builtInZoomControls = true
             displayZoomControls = false
         }
-        webViewClient = BrowserWebViewClient(adBlockerEngine)
+        webViewClient = BrowserWebViewClient(adBlockerEngine) {
+            onPageUpdate?.invoke(url ?: "", title)
+        }
         webChromeClient = BrowserWebChromeClient()
         
         setDownloadListener { url, _, contentDisposition, mimetype, _ ->
@@ -74,7 +78,8 @@ class BrowserWebView(
 }
 
 class BrowserWebViewClient(
-    private val adBlockerEngine: AdBlockerEngine
+    private val adBlockerEngine: AdBlockerEngine,
+    private val onPageUpdateCallback: () -> Unit
 ) : WebViewClient() {
     override fun shouldInterceptRequest(
         view: WebView?,
@@ -86,7 +91,11 @@ class BrowserWebViewClient(
         }
         return super.shouldInterceptRequest(view, request)
     }
-    // Hooks for future reader mode, downloads
+
+    override fun onPageFinished(view: WebView?, url: String?) {
+        super.onPageFinished(view, url)
+        onPageUpdateCallback()
+    }
 }
 
 class BrowserWebChromeClient : WebChromeClient() {

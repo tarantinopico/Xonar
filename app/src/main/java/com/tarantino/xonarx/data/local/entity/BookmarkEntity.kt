@@ -27,7 +27,8 @@ data class BookmarkEntity(
     val faviconUrl: String?,
     val createdAt: Long,
     val updatedAt: Long,
-    val sortOrder: Int
+    val sortOrder: Int,
+    val isFavorite: Boolean = false
 ) {
     fun toDomainModel() = Bookmark(
         id = id,
@@ -38,7 +39,8 @@ data class BookmarkEntity(
         faviconUrl = faviconUrl,
         createdAt = createdAt,
         updatedAt = updatedAt,
-        sortOrder = sortOrder
+        sortOrder = sortOrder,
+        isFavorite = isFavorite
     )
 
     companion object {
@@ -51,7 +53,8 @@ data class BookmarkEntity(
             faviconUrl = item.faviconUrl,
             createdAt = item.createdAt,
             updatedAt = item.updatedAt,
-            sortOrder = item.sortOrder
+            sortOrder = item.sortOrder,
+            isFavorite = item.isFavorite
         )
     }
 }

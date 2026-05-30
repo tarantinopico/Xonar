@@ -9,7 +9,7 @@ import com.tarantino.xonarx.domain.usecase.DownloadManagerUseCase
 data class TabSession(
     val tabId: String,
     val identityId: String,
-    var webView: WebView? = null
+    var webView: BrowserWebView? = null
 )
 
 class BrowserSessionManager(

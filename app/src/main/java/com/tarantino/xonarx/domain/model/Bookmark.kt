@@ -9,5 +9,6 @@ data class Bookmark(
     val faviconUrl: String?,
     val createdAt: Long,
     val updatedAt: Long,
-    val sortOrder: Int
+    val sortOrder: Int,
+    val isFavorite: Boolean = false
 )

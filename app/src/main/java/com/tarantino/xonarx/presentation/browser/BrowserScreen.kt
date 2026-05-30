@@ -26,7 +26,10 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import com.tarantino.xonarx.domain.model.Tab
+import com.tarantino.xonarx.domain.model.Bookmark
 import com.tarantino.xonarx.presentation.main.MainUiState
 import com.tarantino.xonarx.presentation.main.MainViewModel
 
@@ -46,6 +49,7 @@ fun BrowserScreen(
     onNavigateToNotes: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val suggestions by browserViewModel.suggestions.collectAsState()
     var isEditingUrl by remember { mutableStateOf(false) }
     var menuExpanded by remember { mutableStateOf(false) }
 
@@ -55,9 +59,16 @@ fun BrowserScreen(
                 uiState = uiState,
                 isEditingUrl = isEditingUrl,
                 onUrlEditStateChange = { isEditingUrl = it },
-                onNavigate = { url -> viewModel.openTab(url) },
+                onNavigate = { url -> viewModel.navigate(url) },
+                onSearchQueryChange = { query -> 
+                    uiState.activeIdentity?.let { identity -> 
+                        browserViewModel.updateSearchQuery(query, identity.id) 
+                    } 
+                },
                 onMenuClick = { menuExpanded = true },
-                onTabCountClick = onNavigateToTabSwitcher
+                onTabCountClick = onNavigateToTabSwitcher,
+                onSwipeLeft = { viewModel.switchNextIdentity() },
+                onSwipeRight = { viewModel.switchPreviousIdentity() }
             )
         }
     ) { paddingValues ->
@@ -67,14 +78,21 @@ fun BrowserScreen(
                 .padding(paddingValues)
         ) {
             val activeTab = uiState.activeTab
-            if (activeTab != null) {
+            if (activeTab != null && activeTab.url.isNotEmpty() && activeTab.url != "about:blank" && activeTab.url != "Loading...") {
                 WebViewContainer(
                     tab = activeTab,
                     sessionManager = browserViewModel.sessionManager,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    onPageUpdate = { url, title -> 
+                        viewModel.updateActiveTabUrl(url, title)
+                        viewModel.addToHistory(url, title)
+                    }
                 )
             } else {
-                EmptyBrowserState()
+                EmptyBrowserState(
+                    favorites = uiState.favorites,
+                    onFavoriteClick = { url -> viewModel.navigate(url) }
+                )
             }
 
             if (menuExpanded) {
@@ -90,11 +108,10 @@ fun BrowserScreen(
                     onReaderModeClick = {
                         val session = activeTab?.id?.let { browserViewModel.sessionManager.getOrCreateSession(it, activeTab.identityId) }
                         session?.webView?.let { wv ->
-                            // Inject reader mode Engine here maybe via a static method or ViewModel instance.
-                            // We will supply it via BrowserViewModel.
                             browserViewModel.readerModeEngine.enableReaderMode(wv)
                         }
-                    }
+                    },
+                    onAddToFavoritesClick = { viewModel.addToFavorites() }
                 )
             }
             
@@ -115,18 +132,21 @@ fun BrowserScreen(
                     ) {
                         Text("Search Suggestions", style = MaterialTheme.typography.labelMedium)
                         Spacer(modifier = Modifier.height(8.dp))
-                        // Mocked suggestions
-                        listOf("https://google.com", "https://news.ycombinator.com", "https://github.com").forEach { url ->
-                            Text(
-                                text = url,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        viewModel.openTab(url)
-                                        isEditingUrl = false
-                                    }
-                                    .padding(vertical = 12.dp)
-                            )
+                        if (suggestions.isEmpty()) {
+                            Text("No suggestions available", modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        } else {
+                            suggestions.forEach { url ->
+                                Text(
+                                    text = url,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            viewModel.navigate(url)
+                                            isEditingUrl = false
+                                        }
+                                        .padding(vertical = 12.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -136,15 +156,23 @@ fun BrowserScreen(
 }
 
 @Composable
-fun WebViewContainer(tab: Tab, sessionManager: BrowserSessionManager, modifier: Modifier = Modifier) {
+fun WebViewContainer(
+    tab: Tab,
+    sessionManager: BrowserSessionManager,
+    modifier: Modifier = Modifier,
+    onPageUpdate: (String, String?) -> Unit = { _, _ -> }
+) {
     val session = remember(tab.id) { sessionManager.getOrCreateSession(tab.id, tab.identityId) }
 
     AndroidView(
         modifier = modifier,
         factory = { context ->
-            session.webView ?: error("WebView should not be null here")
+            val wv = session.webView ?: error("WebView should not be null here")
+            wv.onPageUpdate = onPageUpdate
+            wv
         },
         update = { webView ->
+            webView.onPageUpdate = onPageUpdate
             if (webView.url != tab.url && tab.url.isNotEmpty()) {
                 webView.loadUrl(tab.url)
             }
@@ -153,12 +181,53 @@ fun WebViewContainer(tab: Tab, sessionManager: BrowserSessionManager, modifier: 
 }
 
 @Composable
-fun EmptyBrowserState() {
+fun EmptyBrowserState(favorites: List<Bookmark>, onFavoriteClick: (String) -> Unit) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(modifier = Modifier.height(16.dp))
             Text("Search or type web address", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(modifier = Modifier.height(32.dp))
+            if (favorites.isNotEmpty()) {
+                // simple grid for favorites
+                androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
+                    columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(4),
+                    contentPadding = PaddingValues(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp)
+                ) {
+                    items(favorites.size) { index ->
+                        val fav = favorites[index]
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.clickable { onFavoriteClick(fav.url) }
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                // Real app would load favicon, for now fallback to initial
+                                Text(
+                                    text = fav.title.take(1).uppercase(),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = fav.title,
+                                style = MaterialTheme.typography.labelSmall,
+                                maxLines = 1,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -170,18 +239,57 @@ fun BrowserBottomBar(
     isEditingUrl: Boolean,
     onUrlEditStateChange: (Boolean) -> Unit,
     onNavigate: (String) -> Unit,
+    onSearchQueryChange: (String) -> Unit,
     onMenuClick: () -> Unit,
-    onTabCountClick: () -> Unit
+    onTabCountClick: () -> Unit,
+    onSwipeLeft: () -> Unit,
+    onSwipeRight: () -> Unit
 ) {
     val tabCount = uiState.tabs.size
     val currentUrl = uiState.activeTab?.url ?: ""
-    var urlInput by remember(currentUrl) { mutableStateOf(currentUrl) }
+    var urlInput by remember(currentUrl) { 
+        mutableStateOf(androidx.compose.ui.text.input.TextFieldValue(currentUrl)) 
+    }
     val focusRequester = remember { FocusRequester() }
+
+    // When editing starts, select all
+    LaunchedEffect(isEditingUrl) {
+        if (isEditingUrl) {
+            urlInput = urlInput.copy(selection = androidx.compose.ui.text.TextRange(0, urlInput.text.length))
+            focusRequester.requestFocus()
+        }
+    }
+
+    LaunchedEffect(urlInput.text) {
+        if (isEditingUrl) {
+            onSearchQueryChange(urlInput.text)
+        }
+    }
+
+    var horizontalDragAmount by remember { mutableStateOf(0f) }
 
     Surface(
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 3.dp,
-        modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars)
+        modifier = Modifier
+            .windowInsetsPadding(WindowInsets.navigationBars)
+            .windowInsetsPadding(WindowInsets.ime)
+            .pointerInput(isEditingUrl) {
+                if (isEditingUrl) return@pointerInput
+                detectHorizontalDragGestures(
+                    onDragStart = { horizontalDragAmount = 0f },
+                    onDragEnd = {
+                        if (horizontalDragAmount > 50) {
+                            onSwipeRight()
+                        } else if (horizontalDragAmount < -50) {
+                            onSwipeLeft()
+                        }
+                    },
+                    onHorizontalDrag = { change, dragAmount ->
+                        horizontalDragAmount += dragAmount
+                    }
+                )
+            }
     ) {
         Row(
             modifier = Modifier
@@ -226,15 +334,12 @@ fun BrowserBottomBar(
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
                         keyboardActions = KeyboardActions(
                             onGo = {
-                                onNavigate(if (urlInput.startsWith("http")) urlInput else "https://$urlInput")
+                                onNavigate(urlInput.text)
                                 onUrlEditStateChange(false)
                             }
                         ),
                         placeholder = { Text("Search or type URL") }
                     )
-                    LaunchedEffect(Unit) {
-                        focusRequester.requestFocus()
-                    }
                 } else {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.Lock, contentDescription = "Secure", modifier = Modifier.size(16.dp))
@@ -275,12 +380,21 @@ fun BrowserMenu(
     onNavigateToBookmarks: () -> Unit,
     onNavigateToDownloads: () -> Unit,
     onNavigateToNotes: () -> Unit,
-    onReaderModeClick: () -> Unit
+    onReaderModeClick: () -> Unit,
+    onAddToFavoritesClick: () -> Unit
 ) {
     DropdownMenu(
         expanded = expanded,
         onDismissRequest = onDismiss
     ) {
+        DropdownMenuItem(
+            text = { Text("Add to Favorites") },
+            onClick = {
+                onAddToFavoritesClick()
+                onDismiss()
+            },
+            leadingIcon = { Icon(Icons.Default.Star, contentDescription = null) }
+        )
         DropdownMenuItem(
             text = { Text("Identities") },
             onClick = {

@@ -52,6 +52,30 @@ class SettingsViewModel @Inject constructor(
     fun toggleAdBlocking(enabled: Boolean) {
         adBlockerEngine.setBlockingEnabled(enabled)
     }
+
+    fun toggleGestures(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateGesturesEnabled(enabled)
+        }
+    }
+    
+    fun toggleBiometrics(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateBiometricsEnabled(enabled)
+        }
+    }
+    
+    fun toggleAutoClear(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateAutoClearOnExit(enabled)
+        }
+    }
+    
+    fun setSearchEngine(url: String) {
+        viewModelScope.launch {
+            settingsRepository.updateSearchEngine(url)
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -109,10 +133,61 @@ fun SettingsScreen(
             item {
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                 Text(
-                    text = "Privacy",
+                    text = "Browser Settings",
                     color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.labelLarge,
                     modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp)
+                )
+            }
+            item {
+                ListItem(
+                    headlineContent = { Text("Enable Gestures") },
+                    supportingContent = { Text("Swipe to navigate backward/forward") },
+                    trailingContent = {
+                        Switch(
+                            checked = prefs.gesturesEnabled,
+                            onCheckedChange = { viewModel.toggleGestures(it) }
+                        )
+                    }
+                )
+            }
+            item {
+                ListItem(
+                    headlineContent = { Text("Default Search Engine") },
+                    supportingContent = { Text(if (prefs.searchEngineUrl.contains("google", ignoreCase = true)) "Google" else "Custom") }
+                )
+            }
+            item {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                Text(
+                    text = "Privacy & Security",
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp)
+                )
+            }
+            item {
+                ListItem(
+                    headlineContent = { Text("Require Biometrics") },
+                    supportingContent = { Text("Lock identities behind biometric prompt") },
+                    trailingContent = {
+                        Switch(
+                            checked = prefs.biometricsEnabled,
+                            onCheckedChange = { viewModel.toggleBiometrics(it) }
+                        )
+                    }
+                )
+            }
+            item {
+                ListItem(
+                    headlineContent = { Text("Clear data on exit") },
+                    supportingContent = { Text("Automatically clear history and cache") },
+                    trailingContent = {
+                        Switch(
+                            checked = prefs.autoClearOnExit,
+                            onCheckedChange = { viewModel.toggleAutoClear(it) }
+                        )
+                    }
                 )
             }
             item {

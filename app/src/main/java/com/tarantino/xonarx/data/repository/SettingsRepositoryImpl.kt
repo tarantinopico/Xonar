@@ -24,6 +24,10 @@ class SettingsRepositoryImpl @Inject constructor(
         val LAST_IDENTITY_ID = stringPreferencesKey("last_identity_id")
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val MATERIAL_YOU = booleanPreferencesKey("material_you")
+        val GESTURES_ENABLED = booleanPreferencesKey("gestures_enabled")
+        val SEARCH_ENGINE = stringPreferencesKey("search_engine")
+        val BIOMETRICS_ENABLED = booleanPreferencesKey("biometrics_enabled")
+        val AUTO_CLEAR = booleanPreferencesKey("auto_clear")
     }
 
     override val preferences: Flow<AppPreferences> = context.dataStore.data.map { prefs ->
@@ -31,7 +35,11 @@ class SettingsRepositoryImpl @Inject constructor(
         AppPreferences(
             lastActiveIdentityId = prefs[Keys.LAST_IDENTITY_ID],
             themeMode = runCatching { ThemeMode.valueOf(themeModeStr) }.getOrDefault(ThemeMode.SYSTEM),
-            useMaterialYou = prefs[Keys.MATERIAL_YOU] ?: true
+            useMaterialYou = prefs[Keys.MATERIAL_YOU] ?: true,
+            gesturesEnabled = prefs[Keys.GESTURES_ENABLED] ?: true,
+            searchEngineUrl = prefs[Keys.SEARCH_ENGINE] ?: "https://www.google.com/search?q=",
+            biometricsEnabled = prefs[Keys.BIOMETRICS_ENABLED] ?: true,
+            autoClearOnExit = prefs[Keys.AUTO_CLEAR] ?: false
         )
     }
 
@@ -51,5 +59,21 @@ class SettingsRepositoryImpl @Inject constructor(
 
     override suspend fun updateMaterialYou(enabled: Boolean) {
         context.dataStore.edit { prefs -> prefs[Keys.MATERIAL_YOU] = enabled }
+    }
+
+    override suspend fun updateGesturesEnabled(enabled: Boolean) {
+        context.dataStore.edit { prefs -> prefs[Keys.GESTURES_ENABLED] = enabled }
+    }
+
+    override suspend fun updateSearchEngine(url: String) {
+        context.dataStore.edit { prefs -> prefs[Keys.SEARCH_ENGINE] = url }
+    }
+
+    override suspend fun updateBiometricsEnabled(enabled: Boolean) {
+        context.dataStore.edit { prefs -> prefs[Keys.BIOMETRICS_ENABLED] = enabled }
+    }
+
+    override suspend fun updateAutoClearOnExit(enabled: Boolean) {
+        context.dataStore.edit { prefs -> prefs[Keys.AUTO_CLEAR] = enabled }
     }
 }

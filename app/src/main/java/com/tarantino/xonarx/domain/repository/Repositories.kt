@@ -33,6 +33,7 @@ interface BookmarkRepository {
     fun observeBookmarks(identityId: String): Flow<List<Bookmark>>
     suspend fun addBookmark(bookmark: Bookmark)
     suspend fun removeBookmark(bookmark: Bookmark)
+    suspend fun updateBookmark(bookmark: Bookmark)
 }
 
 interface NoteRepository {

@@ -49,6 +49,7 @@ class BookmarkRepositoryImpl @Inject constructor(
     override fun observeBookmarks(identityId: String) = dao.observeBookmarksByIdentity(identityId).map { list -> list.map { it.toDomainModel() } }
     override suspend fun addBookmark(bookmark: Bookmark) = dao.insertBookmark(BookmarkEntity.fromDomainModel(bookmark))
     override suspend fun removeBookmark(bookmark: Bookmark) = dao.deleteBookmark(BookmarkEntity.fromDomainModel(bookmark))
+    override suspend fun updateBookmark(bookmark: Bookmark) = dao.updateBookmark(BookmarkEntity.fromDomainModel(bookmark))
 }
 
 class NoteRepositoryImpl @Inject constructor(
