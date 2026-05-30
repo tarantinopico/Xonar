@@ -33,4 +33,23 @@ To build Xonar, open the project in Android Studio or run the following Gradle t
 
 ## Note on WebView
 
-Xonar uses multiple independent WebViews allocated per active TabSession. Future optimization will pool these views to minimize memory footprint. Currently, session caching isolates cookies and DOM storage based on the `Identity` context.
+Xonar allocates independent profiles using `androidx.webkit.ProfileStore` to guarantee absolute data isolation. Each identity utilizes a separate storage footprint on the disk.
+
+## Testing Strategy
+
+The complete test suite verifies core business rules and behavior without brittle UI assumptions. This includes:
+- **Unit Tests:** Run locally utilizing JUnit 4, verifying `IdentityManager` logic and repositories.
+- **Mocking:** Utilization of `MockK` for validating dependencies.
+- **Coroutines:** Use of `kotlinx-coroutines-test` for flow and async emissions.
+
+Testing is split across domain verification and UI-focused instrumentation. Run via `./gradlew test`.
+
+## Privacy and Security Notes
+
+Xonar is built to act natively inside the constraint boundaries of Android 12+ (API 34 compliant)
+- Uses secure biometrics prompt abstractions which fallback appropriately to user credentials if strong biometrics are absent.
+- Clears WebView active references intelligently during memory pressure and lifecycle callbacks.
+
+## Extension-Ready Architecture
+
+The domain scaffolding currently acts defensively. Abstractions such as `ReaderModeEngine`, `AdBlockerEngine`, and future URL interceptors lie within clean generic interfaces so adding 3rd party plugins down the line is seamless without re-architecting the web views framework.

@@ -15,6 +15,7 @@ import com.tarantino.xonarx.domain.usecase.AdBlockerEngine
 class BrowserWebView(
     context: Context,
     private val adBlockerEngine: AdBlockerEngine,
+    val identityId: String,
     private val onDownloadStarted: (String, String) -> Unit = { _, _ -> }
 ) : WebView(context) {
 

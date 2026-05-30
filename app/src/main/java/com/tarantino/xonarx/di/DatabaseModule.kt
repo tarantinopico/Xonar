@@ -22,7 +22,7 @@ object DatabaseModule {
             context,
             XonarDatabase::class.java,
             "xonar_db"
-        ).fallbackToDestructiveMigration().build()
+        ).fallbackToDestructiveMigration(true).build()
     }
 
     @Provides

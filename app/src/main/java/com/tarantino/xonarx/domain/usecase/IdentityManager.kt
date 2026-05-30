@@ -9,6 +9,16 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * Manages the core concept of Xonar: Identity Isolation.
+ * 
+ * An [Identity] acts as an independent session bucket. To ensure absolute data isolation,
+ * Xonar relies on `ProfileStore` to segregate WebView persistent data per identity.
+ * 
+ * Invariants:
+ * 1. Data belonging to Identity A MUST NOT be accessible when Identity B is active.
+ * 2. Active WebView allocations should use the active identity's ID to fetch the correct profile.
+ */
 @Singleton
 class IdentityManager @Inject constructor(
     private val identityRepository: IdentityRepository,

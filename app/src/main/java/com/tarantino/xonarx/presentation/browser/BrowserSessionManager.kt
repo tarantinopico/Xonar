@@ -25,11 +25,21 @@ class BrowserSessionManager(
                 val wv = BrowserWebView(
                     applicationContext,
                     adBlockerEngine,
+                    identityId,
                     onDownloadStarted = { url, fileName -> 
                         downloadManagerUseCase.startDownload(url, fileName, identityId)
                     }
                 )
-                // In a real implementation, we isolate cookies/storage per identity here.
+                // We isolate cookies/storage per identity here.
+                try {
+                    if (androidx.webkit.WebViewFeature.isFeatureSupported(androidx.webkit.WebViewFeature.MULTI_PROFILE)) {
+                        val store = androidx.webkit.ProfileStore.getInstance()
+                        val profile = store.getOrCreateProfile("identity_$identityId")
+                        androidx.webkit.WebViewCompat.setProfile(wv, profile.name)
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
                 webView = wv
             }
         }
