@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -160,6 +161,83 @@ fun BrowserScreen(
                             }
                         } else {
                             Text("No suggestions available", modifier = Modifier.padding(vertical = 8.dp), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+            }
+
+            // Tab Group Strip
+            val activeGroup = activeTab?.groupId?.let { gid -> uiState.tabGroups.find { it.id == gid } }
+            if (activeGroup != null) {
+                val groupTabs = uiState.tabs.filter { it.groupId == activeGroup.id }
+                TabGroupStrip(
+                    group = activeGroup,
+                    tabs = groupTabs,
+                    activeTabId = activeTab.id,
+                    onTabSelected = { viewModel.selectTab(it) },
+                    onTabClosed = { viewModel.closeTab(it) },
+                    onAddTab = { viewModel.openTab("about:blank", activeGroup.id) },
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun TabGroupStrip(
+    group: com.tarantino.xonarx.domain.model.TabGroup,
+    tabs: List<Tab>,
+    activeTabId: String,
+    onTabSelected: (Tab) -> Unit,
+    onTabClosed: (Tab) -> Unit,
+    onAddTab: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 4.dp
+    ) {
+        Column {
+            HorizontalDivider(color = Color(group.color).copy(alpha = 0.5f), thickness = 2.dp)
+            androidx.compose.foundation.lazy.LazyRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp, horizontal = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                item {
+                    IconButton(onClick = onAddTab, modifier = Modifier.size(36.dp)) {
+                        Icon(Icons.Default.Add, contentDescription = "New tab in group", tint = Color(group.color))
+                    }
+                }
+                items(tabs.size, key = { tabs[it].id }) { i ->
+                    val tab = tabs[i]
+                    val isSelected = tab.id == activeTabId
+                    Box(
+                        modifier = Modifier
+                            .height(36.dp)
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(if (isSelected) Color(group.color).copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant)
+                            .border(1.dp, if (isSelected) Color(group.color) else Color.Transparent, RoundedCornerShape(18.dp))
+                            .clickable { onTabSelected(tab) }
+                            .padding(end = 4.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxHeight()) {
+                            Spacer(Modifier.width(12.dp))
+                            Text(
+                                text = tab.title.ifEmpty { "New Tab" },
+                                style = MaterialTheme.typography.labelMedium,
+                                color = if (isSelected) Color(group.color) else MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                modifier = Modifier.widthIn(max = 100.dp)
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            IconButton(onClick = { onTabClosed(tab) }, modifier = Modifier.size(24.dp)) {
+                                Icon(Icons.Default.Close, contentDescription = "Close", modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                     }
                 }

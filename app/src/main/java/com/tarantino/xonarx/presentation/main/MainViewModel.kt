@@ -14,16 +14,26 @@ import com.tarantino.xonarx.domain.usecase.IdentityManager
 import com.tarantino.xonarx.domain.usecase.UrlHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
 
 import com.tarantino.xonarx.presentation.browser.BrowserSessionManager
 
+import com.tarantino.xonarx.domain.model.TabGroup
+import com.tarantino.xonarx.domain.repository.TabGroupRepository
+
 data class MainUiState(
     val activeIdentity: Identity? = null,
     val tabs: List<Tab> = emptyList(),
+    val tabGroups: List<TabGroup> = emptyList(),
     val favorites: List<Bookmark> = emptyList(),
     val activeTab: Tab? = null,
     val isLoading: Boolean = false,
@@ -34,6 +44,7 @@ data class MainUiState(
 class MainViewModel @Inject constructor(
     private val identityManager: IdentityManager,
     private val tabRepository: TabRepository,
+    private val tabGroupRepository: TabGroupRepository,
     private val bookmarkRepository: BookmarkRepository,
     private val historyRepository: HistoryRepository,
     private val urlHelper: UrlHelper,
@@ -49,11 +60,13 @@ class MainViewModel @Inject constructor(
             } else {
                 combine(
                     tabRepository.observeTabs(identity.id),
+                    tabGroupRepository.observeGroups(identity.id),
                     bookmarkRepository.observeBookmarks(identity.id)
-                ) { tabs, bookmarks ->
+                ) { tabs, groups, bookmarks ->
                     MainUiState(
                         activeIdentity = identity,
                         tabs = tabs,
+                        tabGroups = groups,
                         favorites = bookmarks.filter { it.isFavorite },
                         activeTab = tabs.find { it.isActive },
                         isReady = true
@@ -169,7 +182,7 @@ class MainViewModel @Inject constructor(
         }
     }
     
-    fun openTab(url: String) {
+    fun openTab(url: String, groupId: String? = null) {
         val identity = uiState.value.activeIdentity ?: return
         viewModelScope.launch {
             val newTab = Tab(
@@ -181,7 +194,7 @@ class MainViewModel @Inject constructor(
                 isActive = true,
                 isIncognito = false,
                 isPinned = false,
-                groupId = null,
+                groupId = groupId,
                 lastVisitedAt = System.currentTimeMillis(),
                 createdAt = System.currentTimeMillis(),
                 updatedAt = System.currentTimeMillis()
@@ -195,6 +208,18 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             tabRepository.removeTab(tab)
             sessionManager.removeSession(tab.id)
+            
+            val previousGroupId = tab.groupId
+            if (previousGroupId != null) {
+                val tabsInPrevGroup = uiState.value.tabs.count { it.groupId == previousGroupId }
+                if (tabsInPrevGroup <= 2) { 
+                    tabGroupRepository.ungroupTabs(previousGroupId)
+                    uiState.value.tabGroups.find { it.id == previousGroupId }?.let {
+                        tabGroupRepository.removeGroup(it)
+                    }
+                }
+            }
+
             val currentState = uiState.value
             val remain = currentState.tabs.filter { it.id != tab.id }
             if (tab.isActive && remain.isNotEmpty()) {
@@ -206,6 +231,108 @@ class MainViewModel @Inject constructor(
     fun selectTab(tab: Tab) {
         viewModelScope.launch {
             tabRepository.activateTab(tab.id, tab.identityId)
+        }
+    }
+
+    // --- Tab Groups ---
+
+    fun createTabGroup(name: String, color: Int, initialTabIds: List<String>) {
+        val identity = uiState.value.activeIdentity ?: return
+        viewModelScope.launch {
+            val groupId = UUID.randomUUID().toString()
+            val newGroup = TabGroup(
+                id = groupId,
+                identityId = identity.id,
+                name = name,
+                color = color,
+                isExpanded = true,
+                orderIndex = System.currentTimeMillis().toInt(),
+                createdAt = System.currentTimeMillis(),
+                updatedAt = System.currentTimeMillis()
+            )
+            tabGroupRepository.addGroup(newGroup)
+            
+            for (tabId in initialTabIds) {
+                val tab = uiState.value.tabs.find { it.id == tabId }
+                if (tab != null) {
+                    tabRepository.updateTab(tab.copy(groupId = groupId))
+                }
+            }
+        }
+    }
+
+    fun renameAndColorTabGroup(groupId: String, name: String, color: Int) {
+        val group = uiState.value.tabGroups.find { it.id == groupId } ?: return
+        viewModelScope.launch {
+            tabGroupRepository.updateGroup(
+                group.copy(
+                    name = name,
+                    color = color,
+                    updatedAt = System.currentTimeMillis()
+                )
+            )
+        }
+    }
+
+    fun toggleTabGroupExpanded(groupId: String) {
+        val group = uiState.value.tabGroups.find { it.id == groupId } ?: return
+        viewModelScope.launch {
+            tabGroupRepository.updateGroup(
+                group.copy(
+                    isExpanded = !group.isExpanded,
+                    updatedAt = System.currentTimeMillis()
+                )
+            )
+        }
+    }
+
+    fun moveTabToGroup(tabId: String, groupId: String?) {
+        val tab = uiState.value.tabs.find { it.id == tabId } ?: return
+        if (tab.groupId == groupId) return
+        viewModelScope.launch {
+            tabRepository.updateTab(tab.copy(groupId = groupId))
+            
+            // Auto dissolve group if 1 or 0 tabs left
+            val previousGroupId = tab.groupId
+            if (previousGroupId != null) {
+                val tabsInPrevGroup = uiState.value.tabs.count { it.groupId == previousGroupId }
+                if (tabsInPrevGroup <= 2) { // By the time this runs it will be 1
+                    val remain = uiState.value.tabs.filter { it.groupId == previousGroupId && it.id != tabId }
+                    if (remain.size <= 1) {
+                        tabGroupRepository.ungroupTabs(previousGroupId)
+                        uiState.value.tabGroups.find { it.id == previousGroupId }?.let {
+                            tabGroupRepository.removeGroup(it)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fun closeTabGroup(groupId: String) {
+        val group = uiState.value.tabGroups.find { it.id == groupId } ?: return
+        viewModelScope.launch {
+            val tabsInGroup = uiState.value.tabs.filter { it.groupId == groupId }
+            for (tab in tabsInGroup) {
+                sessionManager.removeSession(tab.id)
+            }
+            tabGroupRepository.deleteTabsInGroup(groupId)
+            tabGroupRepository.removeGroup(group)
+
+            val remainingTabs = uiState.value.tabs.filter { it.groupId != groupId }
+            if (remainingTabs.none { it.isActive } && remainingTabs.isNotEmpty()) {
+                tabRepository.activateTab(remainingTabs.last().id, group.identityId)
+            } else if (remainingTabs.isEmpty()) {
+                openTab("about:blank")
+            }
+        }
+    }
+
+    fun ungroupTabGroup(groupId: String) {
+        val group = uiState.value.tabGroups.find { it.id == groupId } ?: return
+        viewModelScope.launch {
+            tabGroupRepository.ungroupTabs(groupId)
+            tabGroupRepository.removeGroup(group)
         }
     }
 }

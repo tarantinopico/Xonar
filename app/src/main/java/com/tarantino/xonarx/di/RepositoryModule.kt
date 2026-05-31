@@ -22,6 +22,10 @@ abstract class RepositoryModule {
 
     @Binds
     @Singleton
+    abstract fun bindTabGroupRepository(impl: TabGroupRepositoryImpl): TabGroupRepository
+
+    @Binds
+    @Singleton
     abstract fun bindHistoryRepository(impl: HistoryRepositoryImpl): HistoryRepository
 
     @Binds

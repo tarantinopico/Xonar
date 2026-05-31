@@ -12,14 +12,16 @@ import com.tarantino.xonarx.data.local.entity.*
         HistoryItemEntity::class,
         BookmarkEntity::class,
         DownloadItemEntity::class,
-        NoteEntity::class
+        NoteEntity::class,
+        TabGroupEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class XonarDatabase : RoomDatabase() {
     abstract fun identityDao(): IdentityDao
     abstract fun tabDao(): TabDao
+    abstract fun tabGroupDao(): TabGroupDao
     abstract fun historyItemDao(): HistoryItemDao
     abstract fun bookmarkDao(): BookmarkDao
     abstract fun downloadItemDao(): DownloadItemDao
