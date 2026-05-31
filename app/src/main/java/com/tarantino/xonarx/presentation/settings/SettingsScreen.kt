@@ -56,6 +56,12 @@ class SettingsViewModel @Inject constructor(
             settingsRepository.updateMaterialYou(enabled)
         }
     }
+
+    fun updateThumbnailSize(size: String) {
+        viewModelScope.launch {
+            settingsRepository.updateThumbnailSize(size)
+        }
+    }
     
     fun toggleAdBlocking(enabled: Boolean) {
         adBlockerEngine.setBlockingEnabled(enabled)
@@ -186,6 +192,18 @@ fun SettingsScreen(
                                     checked = prefs.useMaterialYou,
                                     onCheckedChange = { viewModel.toggleMaterialYou(it) }
                                 )
+                            }
+                        )
+                        SettingsItem(
+                            title = "Tab Thumbnail Size",
+                            subtitle = prefs.thumbnailSize.replaceFirstChar { it.uppercase() },
+                            onClick = {
+                                val nextSize = when(prefs.thumbnailSize) {
+                                    "small" -> "medium"
+                                    "medium" -> "large"
+                                    else -> "small"
+                                }
+                                viewModel.updateThumbnailSize(nextSize)
                             }
                         )
                     }

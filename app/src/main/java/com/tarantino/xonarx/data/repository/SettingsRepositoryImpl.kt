@@ -44,6 +44,7 @@ class SettingsRepositoryImpl @Inject constructor(
         val NTP_WIDGETS = stringPreferencesKey("ntp_widgets")
         val WEB_NOTIFICATIONS = booleanPreferencesKey("web_notifications")
         val DEFAULT_PAGE_ZOOM = intPreferencesKey("default_page_zoom")
+        val THUMBNAIL_SIZE = stringPreferencesKey("thumbnail_size")
     }
 
     override val preferences: Flow<AppPreferences> = context.dataStore.data.map { prefs ->
@@ -71,7 +72,8 @@ class SettingsRepositoryImpl @Inject constructor(
             hasCompletedOnboarding = prefs[Keys.HAS_COMPLETED_ONBOARDING] ?: false,
             ntpWidgets = ntpWidgetsList,
             webNotificationsEnabled = prefs[Keys.WEB_NOTIFICATIONS] ?: true,
-            defaultPageZoom = prefs[Keys.DEFAULT_PAGE_ZOOM] ?: 100
+            defaultPageZoom = prefs[Keys.DEFAULT_PAGE_ZOOM] ?: 100,
+            thumbnailSize = prefs[Keys.THUMBNAIL_SIZE] ?: "medium"
         )
     }
 
@@ -197,5 +199,9 @@ class SettingsRepositoryImpl @Inject constructor(
 
     override suspend fun updateDefaultPageZoom(zoom: Int) {
         context.dataStore.edit { prefs -> prefs[Keys.DEFAULT_PAGE_ZOOM] = zoom }
+    }
+
+    override suspend fun updateThumbnailSize(size: String) {
+        context.dataStore.edit { prefs -> prefs[Keys.THUMBNAIL_SIZE] = size }
     }
 }

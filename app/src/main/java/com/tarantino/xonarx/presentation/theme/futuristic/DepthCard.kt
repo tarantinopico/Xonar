@@ -24,10 +24,15 @@ import androidx.compose.ui.unit.dp
  * @param onClick Optional action triggered upon card tap.
  * @param content Target surface content to wrap.
  */
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun DepthCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
     content: @Composable BoxScope.() -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -46,11 +51,12 @@ fun DepthCard(
                 scaleY = scale
             }
             .then(
-                if (onClick != null) {
-                    Modifier.clickable(
+                if (onClick != null || onLongClick != null) {
+                    Modifier.combinedClickable(
                         interactionSource = interactionSource,
                         indication = null,
-                        onClick = onClick
+                        onClick = onClick ?: {},
+                        onLongClick = onLongClick
                     )
                 } else {
                     Modifier

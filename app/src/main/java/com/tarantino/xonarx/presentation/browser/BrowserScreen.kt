@@ -63,19 +63,22 @@ fun BrowserScreen(
     var showBackHistorySheet by remember { mutableStateOf(false) }
     var showForwardHistorySheet by remember { mutableStateOf(false) }
     var showIdentitySelector by remember { mutableStateOf(false) }
+    var isFindInPageActive by remember { mutableStateOf(false) }
+    var findInPageQuery by remember { mutableStateOf("") }
+    var isDesktopSiteEnabled by remember { mutableStateOf(false) }
 
     val focusRequester = remember { FocusRequester() }
 
     var suggestedClipboardUrl by remember { mutableStateOf<String?>(null) }
     var hasCheckedClipboard by remember { mutableStateOf(false) }
     
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val currentContext = androidx.compose.ui.platform.LocalContext.current
 
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
         if (!hasCheckedClipboard) {
             hasCheckedClipboard = true
-            val clipUrl = com.tarantino.xonarx.presentation.util.ClipboardHelper.getClipboardUrl(context)
+            val clipUrl = com.tarantino.xonarx.presentation.util.ClipboardHelper.getClipboardUrl(currentContext)
             if (clipUrl != null && clipUrl != uiState.activeTab?.url) {
                 suggestedClipboardUrl = clipUrl
             }
@@ -85,7 +88,7 @@ fun BrowserScreen(
     val configuration = androidx.compose.ui.platform.LocalConfiguration.current
     val isPipMode = remember(configuration) {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
-            (context as? android.app.Activity)?.isInPictureInPictureMode == true
+            (currentContext as? android.app.Activity)?.isInPictureInPictureMode == true
         } else false
     }
 
@@ -272,6 +275,37 @@ fun BrowserScreen(
                                             e.printStackTrace()
                                         }
                                     }
+                                },
+                                onFindInPageClick = { isFindInPageActive = true },
+                                onCopyLinkClick = {
+                                    uiState.activeTab?.url?.let { url ->
+                                        val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                                        clipboard?.setPrimaryClip(android.content.ClipData.newPlainText("URL", url))
+                                        com.tarantino.xonarx.presentation.util.HapticFeedbackHelper.performLightHaptic(currentContext, preferences.hapticFeedbackEnabled)
+                                    }
+                                },
+                                onOpenExternalClick = {
+                                    uiState.activeTab?.url?.let { url ->
+                                        try {
+                                            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
+                                            context.startActivity(intent)
+                                        } catch (e: Exception) {
+                                            e.printStackTrace()
+                                        }
+                                    }
+                                },
+                                isDesktopSite = isDesktopSiteEnabled,
+                                onToggleDesktopSite = {
+                                    isDesktopSiteEnabled = !isDesktopSiteEnabled
+                                    uiState.activeTab?.id?.let { activeTabId ->
+                                        val session = browserViewModel.sessionManager.getOrCreateSession(activeTabId, uiState.activeTab?.identityId ?: "")
+                                        session.webView?.settings?.userAgentString = if (isDesktopSiteEnabled) {
+                                            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                                        } else {
+                                            android.webkit.WebSettings.getDefaultUserAgent(context)
+                                        }
+                                        session.webView?.reload()
+                                    }
                                 }
                             )
                         }
@@ -294,7 +328,7 @@ fun BrowserScreen(
                     },
                     onBackLongClick = {
                         if (canGoBack) {
-                            com.tarantino.xonarx.presentation.util.HapticFeedbackHelper.performLightHaptic(context, preferences.hapticFeedbackEnabled)
+                            com.tarantino.xonarx.presentation.util.HapticFeedbackHelper.performLightHaptic(currentContext, preferences.hapticFeedbackEnabled)
                             showBackHistorySheet = true
                         }
                     },
@@ -303,7 +337,7 @@ fun BrowserScreen(
                     },
                     onForwardLongClick = {
                         if (canGoForward) {
-                            com.tarantino.xonarx.presentation.util.HapticFeedbackHelper.performLightHaptic(context, preferences.hapticFeedbackEnabled)
+                            com.tarantino.xonarx.presentation.util.HapticFeedbackHelper.performLightHaptic(currentContext, preferences.hapticFeedbackEnabled)
                             showForwardHistorySheet = true
                         }
                     },
@@ -313,7 +347,7 @@ fun BrowserScreen(
                         }
                     },
                     onSearchClick = {
-                        com.tarantino.xonarx.presentation.util.HapticFeedbackHelper.performLightHaptic(context, preferences.hapticFeedbackEnabled)
+                        com.tarantino.xonarx.presentation.util.HapticFeedbackHelper.performLightHaptic(currentContext, preferences.hapticFeedbackEnabled)
                         isEditingUrl = true
                     },
                     onTabCountClick = {
@@ -328,7 +362,7 @@ fun BrowserScreen(
                         }
                     },
                     onNewTabLongClick = {
-                        com.tarantino.xonarx.presentation.util.HapticFeedbackHelper.performLightHaptic(context, preferences.hapticFeedbackEnabled)
+                        com.tarantino.xonarx.presentation.util.HapticFeedbackHelper.performLightHaptic(currentContext, preferences.hapticFeedbackEnabled)
                         showIdentitySelector = true
                     }
                 )
@@ -372,6 +406,56 @@ fun BrowserScreen(
                 )
             }
 
+
+            AnimatedVisibility(
+                visible = isFindInPageActive,
+                enter = expandVertically(expandFrom = Alignment.Top),
+                exit = shrinkVertically(shrinkTowards = Alignment.Top),
+                modifier = Modifier.align(Alignment.TopCenter)
+            ) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    tonalElevation = 6.dp
+                ) {
+                    val activeWebView = activeTab?.id?.let { browserViewModel.sessionManager.getWebView(it) }
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        androidx.compose.material3.OutlinedTextField(
+                            value = findInPageQuery,
+                            onValueChange = { 
+                                findInPageQuery = it 
+                                activeWebView?.findAllAsync(it)
+                            },
+                            placeholder = { Text("Find in page") },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true,
+                            colors = androidx.compose.material3.TextFieldDefaults.colors(
+                                focusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
+                                unfocusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
+                                focusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
+                                unfocusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent
+                            )
+                        )
+                        IconButton(onClick = { activeWebView?.findNext(false) }) {
+                            Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Previous")
+                        }
+                        IconButton(onClick = { activeWebView?.findNext(true) }) {
+                            Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Next")
+                        }
+                        IconButton(onClick = { 
+                            isFindInPageActive = false 
+                            findInPageQuery = ""
+                            activeWebView?.clearMatches()
+                        }) {
+                            Icon(Icons.Default.Close, contentDescription = "Close")
+                        }
+                    }
+                }
+            }
 
             AnimatedVisibility(
                 visible = isEditingUrl,
@@ -796,8 +880,36 @@ fun BrowserTopBar(
                         )
                     } else {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Lock, contentDescription = "Secure", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Spacer(modifier = Modifier.width(8.dp))
+                            var showSiteSettings by remember { mutableStateOf(false) }
+                            IconButton(onClick = { showSiteSettings = true }, modifier = Modifier.size(24.dp)) {
+                                Icon(Icons.Default.Lock, contentDescription = "Secure", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            if (showSiteSettings) {
+                                val context = androidx.compose.ui.platform.LocalContext.current
+                                ModalBottomSheet(onDismissRequest = { showSiteSettings = false }) {
+                                    Column(modifier = Modifier.padding(16.dp)) {
+                                        Text("Site Settings", style = MaterialTheme.typography.titleLarge)
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        Text(currentUrl, style = MaterialTheme.typography.bodyMedium)
+                                        Spacer(modifier = Modifier.height(24.dp))
+                                        Button(
+                                            onClick = {
+                                                android.webkit.CookieManager.getInstance().removeAllCookies(null)
+                                                android.webkit.WebStorage.getInstance().deleteAllData()
+                                                android.widget.Toast.makeText(context, "Site data cleared", android.widget.Toast.LENGTH_SHORT).show()
+                                                showSiteSettings = false
+                                            },
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Icon(Icons.Default.Delete, contentDescription = "Clear")
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text("Clear Cookies and Site Data")
+                                        }
+                                        Spacer(modifier = Modifier.height(32.dp))
+                                    }
+                                }
+                            }
+                            Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = if (currentUrl.isEmpty()) "Search or type URL" else currentUrl,
                                 maxLines = 1,
@@ -851,7 +963,12 @@ fun BrowserMenu(
     onNavigateForward: () -> Unit,
     onScanQrClick: () -> Unit,
     onPrintPdfClick: () -> Unit,
-    onEnterPipClick: () -> Unit
+    onEnterPipClick: () -> Unit,
+    onFindInPageClick: () -> Unit,
+    onCopyLinkClick: () -> Unit,
+    onOpenExternalClick: () -> Unit,
+    isDesktopSite: Boolean,
+    onToggleDesktopSite: () -> Unit
 ) {
     DropdownMenu(
         expanded = expanded,
@@ -864,6 +981,38 @@ fun BrowserMenu(
                 onDismiss()
             },
             leadingIcon = { Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null) }
+        )
+        DropdownMenuItem(
+            text = { Text("Find in Page") },
+            onClick = {
+                onFindInPageClick()
+                onDismiss()
+            },
+            leadingIcon = { Icon(Icons.Default.FindInPage, contentDescription = null) }
+        )
+        DropdownMenuItem(
+            text = { Text("Copy Link") },
+            onClick = {
+                onCopyLinkClick()
+                onDismiss()
+            },
+            leadingIcon = { Icon(Icons.Default.Link, contentDescription = null) }
+        )
+        DropdownMenuItem(
+            text = { Text(if (isDesktopSite) "Mobile Site" else "Desktop Site") },
+            onClick = {
+                onToggleDesktopSite()
+                onDismiss()
+            },
+            leadingIcon = { Icon(Icons.Default.DesktopMac, contentDescription = null) }
+        )
+        DropdownMenuItem(
+            text = { Text("Open in external app") },
+            onClick = {
+                onOpenExternalClick()
+                onDismiss()
+            },
+            leadingIcon = { Icon(Icons.Default.OpenInBrowser, contentDescription = null) }
         )
         DropdownMenuItem(
             text = { Text("Add to Favorites") },

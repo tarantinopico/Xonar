@@ -1,6 +1,6 @@
 package com.tarantino.xonarx.presentation.history
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -11,6 +11,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -52,28 +55,48 @@ class HistoryViewModel @Inject constructor(
             historyRepository.removeHistoryItem(item)
         }
     }
+    fun deleteItems(items: Set<HistoryItem>) {
+        viewModelScope.launch {
+            items.forEach { historyRepository.removeHistoryItem(it) }
+        }
+    }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun HistoryScreen(
     viewModel: HistoryViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit
 ) {
     val items by viewModel.historyItems.collectAsState()
+    var selectedItems by remember { mutableStateOf(setOf<HistoryItem>()) }
+    val isSelectionMode = selectedItems.isNotEmpty()
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("History") },
+                title = { 
+                    if (isSelectionMode) Text("${selectedItems.size} selected")
+                    else Text("History") 
+                },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    IconButton(onClick = if (isSelectionMode) { { selectedItems = emptySet() } } else onNavigateBack) {
+                        if (isSelectionMode) Icon(Icons.Default.ArrowBack, contentDescription = "Cancel")
+                        else Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
-                    TextButton(onClick = { viewModel.clearHistory() }) {
-                        Text("Clear Browsing Data")
+                    if (isSelectionMode) {
+                        IconButton(onClick = { 
+                            viewModel.deleteItems(selectedItems)
+                            selectedItems = emptySet()
+                        }) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete selected")
+                        }
+                    } else {
+                        TextButton(onClick = { viewModel.clearHistory() }) {
+                            Text("Clear Data")
+                        }
                     }
                 }
             )
@@ -90,17 +113,40 @@ fun HistoryScreen(
                     .padding(paddingValues)
             ) {
                 items(items) { item ->
+                    val isSelected = selectedItems.contains(item)
                     ListItem(
                         headlineContent = { Text(item.title, maxLines = 1) },
                         supportingContent = { Text(item.url, maxLines = 1) },
                         trailingContent = {
-                            IconButton(onClick = { viewModel.deleteItem(item) }) {
-                                Icon(Icons.Default.Delete, contentDescription = "Delete")
+                            if (isSelectionMode) {
+                                androidx.compose.material3.Checkbox(
+                                    checked = isSelected,
+                                    onCheckedChange = null
+                                )
+                            } else {
+                                IconButton(onClick = { viewModel.deleteItem(item) }) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Delete")
+                                }
                             }
                         },
-                        modifier = Modifier.clickable { /* Handle open */ }
+                        colors = if (isSelected) ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha=0.3f)) else ListItemDefaults.colors(),
+                        modifier = Modifier.combinedClickable(
+                                onClick = { 
+                                    if (isSelectionMode) {
+                                        selectedItems = if (isSelected) selectedItems - item else selectedItems + item
+                                    } else {
+                                        /* Navigate to item */ 
+                                    }
+                                },
+                                onLongClick = {
+                                    if (!isSelectionMode) {
+                                        selectedItems = selectedItems + item
+                                    }
+                                }
+                            )
+                        
                     )
-                    Divider()
+                    HorizontalDivider()
                 }
             }
         }

@@ -1,6 +1,7 @@
 package com.tarantino.xonarx.presentation.tabs
 
 import android.graphics.Bitmap
+import com.tarantino.xonarx.presentation.util.shimmer
 import androidx.compose.animation.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -48,7 +49,14 @@ fun TabSwitcherScreen(
     onNavigateBack: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val preferences by browserViewModel.preferences.collectAsState()
     
+    val columnsCount = when (preferences.thumbnailSize) {
+        "small" -> 3
+        "large" -> 1
+        else -> 2
+    }
+
     var showRenameDialogForGroup by remember { mutableStateOf<TabGroup?>(null) }
     var showColorDialogForGroup by remember { mutableStateOf<TabGroup?>(null) }
     
@@ -190,7 +198,7 @@ fun TabSwitcherScreen(
                 }
             } else {
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
+                    columns = GridCells.Fixed(columnsCount),
                     contentPadding = PaddingValues(16.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalArrangement = Arrangement.spacedBy(24.dp),
@@ -210,7 +218,7 @@ fun TabSwitcherScreen(
                                     val tabsInGroup = uiState.tabs.filter { it.groupId == groupId }
                                     
                                     if (group.isExpanded) {
-                                        item(span = { GridItemSpan(2) }, key = "group_header_${group.id}") {
+                                        item(span = { GridItemSpan(maxLineSpan) }, key = "group_header_${group.id}") {
                                             TabGroupHeader(
                                                 group = group,
                                                 count = tabsInGroup.size,
@@ -464,7 +472,7 @@ fun TabCard(
                             contentScale = ContentScale.Crop
                         )
                     } else {
-                        Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface), contentAlignment = Alignment.Center) {
+                        Box(modifier = Modifier.fillMaxSize().shimmer(), contentAlignment = Alignment.Center) {
                             Text(tab.url, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }

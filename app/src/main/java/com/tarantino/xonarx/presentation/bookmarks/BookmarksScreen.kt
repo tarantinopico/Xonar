@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -52,6 +53,7 @@ fun BookmarksScreen(
     onNavigateBack: () -> Unit
 ) {
     val items by viewModel.bookmarks.collectAsState()
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     Scaffold(
         topBar = {
@@ -60,6 +62,32 @@ fun BookmarksScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    if (items.isNotEmpty()) {
+                        IconButton(onClick = {
+                            val html = StringBuilder().apply {
+                                append("<!DOCTYPE NETSCAPE-Bookmark-file-1>\n")
+                                append("<META HTTP-EQUIV=\"Content-Type\" CONTENT=\"text/html; charset=UTF-8\">\n")
+                                append("<TITLE>Bookmarks</TITLE>\n")
+                                append("<H1>Bookmarks</H1>\n")
+                                append("<DL><p>\n")
+                                items.forEach { b ->
+                                    append("    <DT><A HREF=\"${b.url}\">${b.title}</A>\n")
+                                }
+                                append("</DL><p>\n")
+                            }.toString()
+                            
+                            val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                type = "text/html"
+                                putExtra(android.content.Intent.EXTRA_TEXT, html)
+                                putExtra(android.content.Intent.EXTRA_TITLE, "Bookmarks Export")
+                            }
+                            context.startActivity(android.content.Intent.createChooser(intent, "Export Bookmarks"))
+                        }) {
+                            Icon(Icons.Default.Share, contentDescription = "Export")
+                        }
                     }
                 }
             )

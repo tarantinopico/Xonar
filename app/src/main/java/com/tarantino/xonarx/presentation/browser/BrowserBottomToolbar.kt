@@ -60,77 +60,63 @@ fun BrowserBottomToolbar(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Back Button
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .combinedClickable(
-                            onClick = onBackClick,
-                            onLongClick = onBackLongClick,
-                            enabled = canGoBack
-                        ),
-                    contentAlignment = Alignment.Center
+                DepthCard(
+                    modifier = Modifier.size(48.dp).clip(CircleShape),
+                    onClick = if (canGoBack) onBackClick else null,
+                    onLongClick = if (canGoBack) onBackLongClick else null
                 ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
-                        tint = if (canGoBack) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                    )
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = if (canGoBack) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                        )
+                    }
                 }
 
                 // Forward Button
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .combinedClickable(
-                            onClick = onForwardClick,
-                            onLongClick = onForwardLongClick,
-                            enabled = canGoForward
-                        ),
-                    contentAlignment = Alignment.Center
+                DepthCard(
+                    modifier = Modifier.size(48.dp).clip(CircleShape),
+                    onClick = if (canGoForward) onForwardClick else null,
+                    onLongClick = if (canGoForward) onForwardLongClick else null
                 ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = "Forward",
-                        tint = if (canGoForward) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                    )
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = "Forward",
+                            tint = if (canGoForward) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                        )
+                    }
                 }
 
                 // Home/Search Button
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .combinedClickable(
-                            onClick = onHomeClick,
-                            onLongClick = onSearchClick
-                        ),
-                    contentAlignment = Alignment.Center
+                DepthCard(
+                    modifier = Modifier.size(48.dp).clip(CircleShape),
+                    onClick = onHomeClick,
+                    onLongClick = onSearchClick
                 ) {
-                    Icon(
-                        Icons.Default.Home,
-                        contentDescription = "Home",
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Icon(
+                            Icons.Default.Home,
+                            contentDescription = "Home",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 }
                 
                 // New Tab Button
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .combinedClickable(
-                            onClick = onNewTabClick,
-                            onLongClick = onNewTabLongClick
-                        ),
-                    contentAlignment = Alignment.Center
+                DepthCard(
+                    modifier = Modifier.size(48.dp).clip(CircleShape),
+                    onClick = onNewTabClick,
+                    onLongClick = onNewTabLongClick
                 ) {
-                    Icon(
-                        Icons.Default.Add,
-                        contentDescription = "New Tab",
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = "New Tab",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 }
 
                 // Tab Count
