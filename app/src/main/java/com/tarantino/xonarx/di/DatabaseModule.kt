@@ -71,6 +71,12 @@ object DatabaseModule {
         }
     }
 
+    val MIGRATION_3_4 = object : Migration(3, 4) {
+        override fun migrate(database: SupportSQLiteDatabase) {
+            database.execSQL("DROP TABLE IF EXISTS `userscripts`")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideXonarDatabase(@ApplicationContext context: Context): XonarDatabase {
@@ -79,7 +85,7 @@ object DatabaseModule {
             XonarDatabase::class.java,
             "xonar_db"
         )
-        .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
         .fallbackToDestructiveMigration(false)
         .build()
     }
@@ -104,9 +110,6 @@ object DatabaseModule {
 
     @Provides
     fun provideNoteDao(db: XonarDatabase): NoteDao = db.noteDao()
-
-    @Provides
-    fun provideUserscriptDao(db: XonarDatabase): UserscriptDao = db.userscriptDao()
 
     @Provides
     fun provideFeedDao(db: XonarDatabase): FeedDao = db.feedDao()

@@ -11,8 +11,6 @@ import kotlinx.coroutines.launch
 import androidx.lifecycle.viewModelScope
 import com.tarantino.xonarx.domain.usecase.SuggestionsEngine
 import com.tarantino.xonarx.domain.usecase.QrScannerUseCase
-import com.tarantino.xonarx.domain.usecase.UserscriptEngine
-import com.tarantino.xonarx.domain.model.Userscript
 import com.tarantino.xonarx.domain.repository.SettingsRepository
 import com.tarantino.xonarx.domain.repository.AppPreferences
 import kotlinx.coroutines.flow.StateFlow
@@ -24,7 +22,6 @@ class BrowserViewModel @Inject constructor(
     val sessionManager: BrowserSessionManager,
     private val suggestionsEngine: SuggestionsEngine,
     private val qrScannerUseCase: QrScannerUseCase,
-    private val userscriptEngine: UserscriptEngine,
     settingsRepository: SettingsRepository
 ) : ViewModel() {
     val preferences: StateFlow<AppPreferences> = settingsRepository.preferences.stateIn(
@@ -34,29 +31,17 @@ class BrowserViewModel @Inject constructor(
     val suggestions = _suggestions.asStateFlow()
 
     private var currentIdentityId: String? = null
-    private var activeScripts: List<Userscript> = emptyList()
 
     private var searchJob: Job? = null
 
     fun updateIdentity(identityId: String) {
         if (currentIdentityId != identityId) {
             currentIdentityId = identityId
-            loadScriptsForIdentity(identityId)
-        }
-    }
-
-    private fun loadScriptsForIdentity(identityId: String) {
-        viewModelScope.launch {
-            activeScripts = userscriptEngine.getScriptsForIdentity(identityId)
-            sessionManager.getAllSessionsForIdentity(identityId).forEach { session ->
-                session.webView?.scripts = activeScripts
-            }
         }
     }
 
     fun capturePreviewForTab(tabId: String, identityId: String) {
         val session = sessionManager.getOrCreateSession(tabId, identityId)
-        session.webView?.scripts = activeScripts
         val bmp = session.webView?.capturePreview()
         if (bmp != null) {
             sessionManager.updatePreview(tabId, bmp)

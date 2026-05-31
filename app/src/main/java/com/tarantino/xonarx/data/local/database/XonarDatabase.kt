@@ -14,10 +14,9 @@ import com.tarantino.xonarx.data.local.entity.*
         DownloadItemEntity::class,
         NoteEntity::class,
         TabGroupEntity::class,
-        UserscriptEntity::class,
         FeedEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class XonarDatabase : RoomDatabase() {
@@ -28,6 +27,5 @@ abstract class XonarDatabase : RoomDatabase() {
     abstract fun bookmarkDao(): BookmarkDao
     abstract fun downloadItemDao(): DownloadItemDao
     abstract fun noteDao(): NoteDao
-    abstract fun userscriptDao(): UserscriptDao
     abstract fun feedDao(): FeedDao
 }

@@ -30,7 +30,6 @@ class SuggestionsEngine @Inject constructor(
             "xonar://bookmarks" to listOf("bookmarks", "favorites"),
             "xonar://downloads" to listOf("downloads", "files"),
             "xonar://notes" to listOf("notes", "memo"),
-            "xonar://userscripts" to listOf("userscripts", "css", "extensions"),
             "xonar://feeds" to listOf("feeds", "rss", "news")
         )
         for ((route, keywords) in commands) {

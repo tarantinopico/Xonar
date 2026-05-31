@@ -9,13 +9,11 @@ import com.tarantino.xonarx.presentation.tabs.TabSwitcherScreen
 import com.tarantino.xonarx.presentation.identity.IdentityScreen
 import com.tarantino.xonarx.presentation.settings.SettingsScreen
 import com.tarantino.xonarx.presentation.settings.PrivacyStatsScreen
-import com.tarantino.xonarx.presentation.settings.UserscriptManagerScreen
 import com.tarantino.xonarx.presentation.history.HistoryScreen
 import com.tarantino.xonarx.presentation.bookmarks.BookmarksScreen
 import com.tarantino.xonarx.presentation.downloads.DownloadsScreen
 import com.tarantino.xonarx.presentation.notes.NotesScreen
 import com.tarantino.xonarx.presentation.feeds.FeedsScreen
-import com.tarantino.xonarx.presentation.ambient.AmbientModeScreen
 
 import com.tarantino.xonarx.presentation.onboarding.OnboardingScreen
 
@@ -35,9 +33,7 @@ fun AppNavigation(navController: NavHostController, startDestination: String = S
                 onNavigateToDownloads = { navController.navigate(Screen.Downloads.route) },
                 onNavigateToNotes = { navController.navigate(Screen.Notes.route) },
                 onNavigateToPrivacyStats = { navController.navigate(Screen.PrivacyStats.route) },
-                onNavigateToUserscripts = { navController.navigate(Screen.Userscripts.route) },
-                onNavigateToFeeds = { navController.navigate(Screen.Feeds.route) },
-                onNavigateToAmbientMode = { navController.navigate(Screen.AmbientMode.route) }
+                onNavigateToFeeds = { navController.navigate(Screen.Feeds.route) }
             )
         }
         composable(Screen.TabSwitcher.route) {
@@ -80,19 +76,9 @@ fun AppNavigation(navController: NavHostController, startDestination: String = S
                 onNavigateBack = { navController.popBackStack() }
             )
         }
-        composable(Screen.Userscripts.route) {
-            UserscriptManagerScreen(
-                onNavigateBack = { navController.popBackStack() }
-            )
-        }
         composable(Screen.Feeds.route) {
             FeedsScreen(
                 onNavigateBack = { navController.popBackStack() }
-            )
-        }
-        composable(Screen.AmbientMode.route) {
-            AmbientModeScreen(
-                onExit = { navController.popBackStack() }
             )
         }
         composable(Screen.Onboarding.route) {

@@ -21,7 +21,6 @@ data class TabSession(
 class BrowserSessionManager(
     private val applicationContext: Context,
     private val adBlockerEngine: AdBlockerEngine,
-    private val userscriptEngine: com.tarantino.xonarx.domain.usecase.UserscriptEngine,
     private val downloadManagerUseCase: DownloadManagerUseCase,
     private val parentalControlEngine: com.tarantino.xonarx.domain.usecase.ParentalControlEngine
 ) {
@@ -50,7 +49,6 @@ class BrowserSessionManager(
                 val wv = BrowserWebView(
                     applicationContext,
                     adBlockerEngine,
-                    userscriptEngine,
                     parentalControlEngine,
                     identityId,
                     onDownloadStarted = { url, fileName -> 
