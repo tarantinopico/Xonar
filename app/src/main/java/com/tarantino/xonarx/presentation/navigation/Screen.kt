@@ -13,4 +13,5 @@ sealed class Screen(val route: String) {
     object Userscripts : Screen("userscripts")
     object Feeds : Screen("feeds")
     object Onboarding : Screen("onboarding")
+    object AmbientMode : Screen("ambient_mode")
 }

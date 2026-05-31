@@ -35,6 +35,9 @@ import com.tarantino.xonarx.domain.model.Tab
 import com.tarantino.xonarx.domain.model.Bookmark
 import com.tarantino.xonarx.presentation.main.MainUiState
 import com.tarantino.xonarx.presentation.main.MainViewModel
+import com.tarantino.xonarx.presentation.theme.futuristic.AnimatedGradientBackdrop
+import com.tarantino.xonarx.presentation.theme.futuristic.DepthCard
+import com.tarantino.xonarx.presentation.theme.futuristic.FrostedGlassSurface
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,7 +53,8 @@ fun BrowserScreen(
     onNavigateToNotes: () -> Unit,
     onNavigateToPrivacyStats: () -> Unit,
     onNavigateToUserscripts: () -> Unit,
-    onNavigateToFeeds: () -> Unit
+    onNavigateToFeeds: () -> Unit,
+    onNavigateToAmbientMode: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val preferences by browserViewModel.preferences.collectAsState()
@@ -250,7 +254,11 @@ fun BrowserScreen(
                                             e.printStackTrace()
                                         }
                                     }
-                                }
+                                },
+                                onArPreviewClick = {
+                                    android.widget.Toast.makeText(context, "AR Preview not available on this device", android.widget.Toast.LENGTH_SHORT).show()
+                                },
+                                onNavigateToAmbientMode = onNavigateToAmbientMode
                             )
                         }
                     }
@@ -345,7 +353,11 @@ fun BrowserScreen(
                                             e.printStackTrace()
                                         }
                                     }
-                                }
+                                },
+                                onArPreviewClick = {
+                                    android.widget.Toast.makeText(context, "AR Preview not available on this device", android.widget.Toast.LENGTH_SHORT).show()
+                                },
+                                onNavigateToAmbientMode = onNavigateToAmbientMode
                             )
                         }
                     }
@@ -477,81 +489,91 @@ fun TabGroupStrip(
     modifier: Modifier = Modifier
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    Surface(
+    Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(8.dp)
-            .clip(RoundedCornerShape(24.dp)),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),
-        tonalElevation = 8.dp,
-        shadowElevation = 8.dp
+            .padding(16.dp)
+            .clip(RoundedCornerShape(24.dp))
     ) {
-        Column {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.size(10.dp).clip(androidx.compose.foundation.shape.CircleShape).background(Color(group.color)))
-                    Spacer(Modifier.width(8.dp))
-                    Text(text = group.name, style = MaterialTheme.typography.labelLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        FrostedGlassSurface(
+            shape = RoundedCornerShape(24.dp),
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+            borderColor = Color(group.color).copy(alpha = 0.3f),
+            blurRadius = 24.dp,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(modifier = Modifier.size(10.dp).clip(androidx.compose.foundation.shape.CircleShape).background(Color(group.color)))
+                        Spacer(Modifier.width(8.dp))
+                        Text(text = group.name, style = MaterialTheme.typography.titleSmall, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                    }
+                    IconButton(onClick = onAddTab, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Add, contentDescription = "New tab in group", tint = Color(group.color))
+                    }
                 }
-                IconButton(onClick = onAddTab, modifier = Modifier.size(28.dp)) {
-                    Icon(Icons.Default.Add, contentDescription = "New tab in group", tint = Color(group.color))
-                }
-            }
-            androidx.compose.foundation.lazy.LazyRow(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                items(tabs.size, key = { tabs[it].id }) { i ->
-                    val tab = tabs[i]
-                    val isSelected = tab.id == activeTabId
-                    Box(
-                        modifier = Modifier
-                            .width(100.dp)
-                            .height(70.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(MaterialTheme.colorScheme.surface)
-                            .border(2.dp, if (isSelected) Color(group.color) else Color.Transparent, RoundedCornerShape(12.dp))
-                            .clickable { onTabSelected(tab) }
-                    ) {
-                        coil.compose.AsyncImage(
-                            model = java.io.File(context.filesDir, "preview_${tab.id}.jpg"),
-                            contentDescription = null,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                            alpha = if (isSelected) 1f else 0.7f
-                        )
-                        Box(
+                androidx.compose.foundation.lazy.LazyRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    items(tabs.size, key = { tabs[it].id }) { i ->
+                        val tab = tabs[i]
+                        val isSelected = tab.id == activeTabId
+                        DepthCard(
+                            onClick = { onTabSelected(tab) },
                             modifier = Modifier
-                                .fillMaxSize()
-                                .background(androidx.compose.ui.graphics.Brush.verticalGradient(
-                                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f))
-                                ))
-                        )
-                        Text(
-                            text = tab.title.ifEmpty { "New Tab" },
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.White,
-                            maxLines = 1,
-                            modifier = Modifier.align(Alignment.BottomStart).padding(6.dp)
-                        )
-                        IconButton(
-                            onClick = { onTabClosed(tab) },
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .size(20.dp)
-                                .padding(2.dp)
-                                .background(Color.Black.copy(alpha = 0.5f), androidx.compose.foundation.shape.CircleShape)
+                                .width(110.dp)
+                                .height(80.dp)
                         ) {
-                            Icon(Icons.Default.Close, contentDescription = "Close", modifier = Modifier.size(12.dp), tint = Color.White)
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                    .border(2.dp, if (isSelected) Color(group.color) else Color.Transparent, RoundedCornerShape(16.dp))
+                            ) {
+                                coil.compose.AsyncImage(
+                                    model = java.io.File(context.filesDir, "preview_${tab.id}.jpg"),
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                    alpha = if (isSelected) 1f else 0.8f
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(androidx.compose.ui.graphics.Brush.verticalGradient(
+                                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f))
+                                        ))
+                                )
+                                Text(
+                                    text = tab.title.ifEmpty { "New Tab" },
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color.White,
+                                    maxLines = 1,
+                                    modifier = Modifier.align(Alignment.BottomStart).padding(8.dp)
+                                )
+                                IconButton(
+                                    onClick = { onTabClosed(tab) },
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .size(24.dp)
+                                        .padding(4.dp)
+                                        .background(Color.Black.copy(alpha = 0.5f), androidx.compose.foundation.shape.CircleShape)
+                                ) {
+                                    Icon(Icons.Default.Close, contentDescription = "Close", modifier = Modifier.size(12.dp), tint = Color.White)
+                                }
+                            }
                         }
                     }
                 }
@@ -622,104 +644,123 @@ fun BrowserTopBar(
 
     var horizontalDragAmount by remember { mutableStateOf(0f) }
 
-    Surface(
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 3.dp,
+    Box(
         modifier = Modifier
+            .fillMaxWidth()
             .windowInsetsPadding(WindowInsets.statusBars)
-            .pointerInput(isEditingUrl) {
-                if (isEditingUrl) return@pointerInput
-                detectHorizontalDragGestures(
-                    onDragStart = { horizontalDragAmount = 0f },
-                    onDragEnd = {
-                        if (horizontalDragAmount > 50) {
-                            onSwipeRight()
-                        } else if (horizontalDragAmount < -50) {
-                            onSwipeLeft()
-                        }
-                    },
-                    onHorizontalDrag = { change, dragAmount ->
-                        horizontalDragAmount += dragAmount
-                    }
-                )
-            }
+            .padding(horizontal = 8.dp, vertical = 8.dp)
     ) {
-        Row(
+        FrostedGlassSurface(
+            shape = RoundedCornerShape(24.dp),
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
+            borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f),
+            blurRadius = 24.dp,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (!isEditingUrl) {
-                Box {
-                    IconButton(onClick = onMenuClick) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "Menu")
-                    }
-                    menuContent()
-                }
-            } else {
-                IconButton(onClick = { onUrlEditStateChange(false) }) {
-                    Icon(Icons.Default.Close, contentDescription = "Cancel")
-                }
-            }
-
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .clickable {
-                        if (!isEditingUrl) onUrlEditStateChange(true)
-                    }
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-            ) {
-                if (isEditingUrl) {
-                    TextField(
-                        value = urlInput,
-                        onValueChange = { urlInput = it },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .focusRequester(focusRequester),
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = Color.Transparent,
-                            unfocusedContainerColor = Color.Transparent,
-                            focusedIndicatorColor = Color.Transparent,
-                            unfocusedIndicatorColor = Color.Transparent
-                        ),
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
-                        keyboardActions = KeyboardActions(
-                            onGo = {
-                                onNavigate(urlInput.text)
-                                onUrlEditStateChange(false)
+                .pointerInput(isEditingUrl) {
+                    if (isEditingUrl) return@pointerInput
+                    detectHorizontalDragGestures(
+                        onDragStart = { horizontalDragAmount = 0f },
+                        onDragEnd = {
+                            if (horizontalDragAmount > 50) {
+                                onSwipeRight()
+                            } else if (horizontalDragAmount < -50) {
+                                onSwipeLeft()
                             }
-                        ),
-                        placeholder = { Text("Search or type URL") }
+                        },
+                        onHorizontalDrag = { change, dragAmount ->
+                            horizontalDragAmount += dragAmount
+                        }
                     )
+                }
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (!isEditingUrl) {
+                    Box {
+                        IconButton(onClick = onMenuClick) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "Menu", tint = MaterialTheme.colorScheme.onSurface)
+                        }
+                        menuContent()
+                    }
                 } else {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Lock, contentDescription = "Secure", modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = if (currentUrl.isEmpty()) "Search or type URL" else currentUrl,
-                            maxLines = 1,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+                    IconButton(onClick = { onUrlEditStateChange(false) }) {
+                        Icon(Icons.Default.Close, contentDescription = "Cancel", tint = MaterialTheme.colorScheme.onSurface)
                     }
                 }
-            }
 
-            if (!isEditingUrl) {
                 Box(
                     modifier = Modifier
-                        .padding(start = 8.dp)
-                        .size(36.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .clickable(onClick = onTabCountClick),
-                    contentAlignment = Alignment.Center
+                        .weight(1f)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(if (isEditingUrl) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f) else Color.Transparent)
+                        .clickable {
+                            if (!isEditingUrl) onUrlEditStateChange(true)
+                        }
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
                 ) {
-                    Text(text = tabCount.toString(), style = MaterialTheme.typography.labelMedium)
+                    if (isEditingUrl) {
+                        TextField(
+                            value = urlInput,
+                            onValueChange = { urlInput = it },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .focusRequester(focusRequester),
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent
+                            ),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
+                            keyboardActions = KeyboardActions(
+                                onGo = {
+                                    onNavigate(urlInput.text)
+                                    onUrlEditStateChange(false)
+                                }
+                            ),
+                            placeholder = { Text("Search or type URL") }
+                        )
+                    } else {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Lock, contentDescription = "Secure", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (currentUrl.isEmpty()) "Search or type URL" else currentUrl,
+                                maxLines = 1,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
+
+                if (!isEditingUrl) {
+                    DepthCard(
+                        onClick = onTabCountClick,
+                        modifier = Modifier
+                            .padding(end = 4.dp)
+                            .size(40.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = tabCount.toString(),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -738,12 +779,14 @@ fun BrowserMenu(
     onNavigateToNotes: () -> Unit,
     onNavigateToPrivacyStats: () -> Unit,
     onNavigateToUserscripts: () -> Unit,
+    onNavigateToAmbientMode: () -> Unit,
     onAddToFavoritesClick: () -> Unit,
     onAddToGroupClick: () -> Unit,
     onNavigateForward: () -> Unit,
     onScanQrClick: () -> Unit,
     onPrintPdfClick: () -> Unit,
-    onEnterPipClick: () -> Unit
+    onEnterPipClick: () -> Unit,
+    onArPreviewClick: () -> Unit
 ) {
     DropdownMenu(
         expanded = expanded,
@@ -796,6 +839,14 @@ fun BrowserMenu(
                 onDismiss()
             },
             leadingIcon = { Icon(Icons.Default.PictureAsPdf, contentDescription = null) }
+        )
+        DropdownMenuItem(
+            text = { Text("AR Spatial Preview") },
+            onClick = {
+                onArPreviewClick()
+                onDismiss()
+            },
+            leadingIcon = { Icon(Icons.Default.ViewInAr, contentDescription = null) }
         )
         HorizontalDivider()
         DropdownMenuItem(
@@ -855,6 +906,14 @@ fun BrowserMenu(
             leadingIcon = { Icon(Icons.Default.Code, contentDescription = null) }
         )
         HorizontalDivider()
+        DropdownMenuItem(
+            text = { Text("Ambient Mode") },
+            onClick = {
+                onNavigateToAmbientMode()
+                onDismiss()
+            },
+            leadingIcon = { Icon(Icons.Default.Bedtime, contentDescription = null) }
+        )
         DropdownMenuItem(
             text = { Text("Settings") },
             onClick = {

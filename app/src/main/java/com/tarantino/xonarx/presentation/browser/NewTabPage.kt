@@ -19,6 +19,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.tarantino.xonarx.domain.model.Bookmark
+import com.tarantino.xonarx.presentation.theme.futuristic.AnimatedGradientBackdrop
+import com.tarantino.xonarx.presentation.theme.futuristic.DepthCard
+import com.tarantino.xonarx.presentation.theme.futuristic.FrostedGlassSurface
 
 @Composable
 fun NewTabDashboard(
@@ -31,19 +34,27 @@ fun NewTabDashboard(
     onNotesClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // A premium dashboard with a subtle gradient background or image
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(Color.Black) // fallback
     ) {
+        AnimatedGradientBackdrop(
+            colors = listOf(
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f),
+                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)
+            ),
+            modifier = Modifier.fillMaxSize()
+        )
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
+                .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(48.dp))
             
             // Branding or Search Prompt
             Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.primary)
@@ -83,6 +94,7 @@ fun NewTabDashboard(
                 Text(
                     text = "Favorites",
                     style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.align(Alignment.Start).padding(bottom = 16.dp)
                 )
                 
@@ -113,20 +125,23 @@ fun QuickActionItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-        modifier = modifier.height(64.dp)
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
-            modifier = Modifier.padding(horizontal = 8.dp)
+    DepthCard(onClick = onClick, modifier = modifier) {
+        FrostedGlassSurface(
+            shape = RoundedCornerShape(20.dp),
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.3f),
+            borderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
+            blurRadius = 16.dp,
+            modifier = Modifier.fillMaxWidth().height(72.dp)
         ) {
-            Icon(icon, contentDescription = label, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                Icon(icon, contentDescription = label, tint = MaterialTheme.colorScheme.onBackground, modifier = Modifier.size(24.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onBackground)
+            }
         }
     }
 }
@@ -136,29 +151,33 @@ fun FavoriteTile(
     bookmark: Bookmark,
     onClick: () -> Unit
 ) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickable(onClick = onClick)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(56.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-            contentAlignment = Alignment.Center
+    DepthCard(onClick = onClick) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            FrostedGlassSurface(
+                shape = RoundedCornerShape(24.dp),
+                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.4f),
+                borderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                blurRadius = 24.dp,
+                modifier = Modifier.size(64.dp)
+            ) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = bookmark.title.take(1).uppercase(),
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = bookmark.title.take(1).uppercase(),
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.primary
+                text = bookmark.title,
+                style = MaterialTheme.typography.labelSmall,
+                maxLines = 1,
+                color = MaterialTheme.colorScheme.onBackground
             )
         }
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = bookmark.title,
-            style = MaterialTheme.typography.labelSmall,
-            maxLines = 1,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }
