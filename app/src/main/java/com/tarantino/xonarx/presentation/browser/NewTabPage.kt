@@ -19,13 +19,17 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.tarantino.xonarx.domain.model.Bookmark
+import com.tarantino.xonarx.domain.model.HistoryItem
 import com.tarantino.xonarx.presentation.theme.futuristic.AnimatedGradientBackdrop
 import com.tarantino.xonarx.presentation.theme.futuristic.DepthCard
 import com.tarantino.xonarx.presentation.theme.futuristic.FrostedGlassSurface
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 
 @Composable
 fun NewTabDashboard(
     favorites: List<Bookmark>,
+    frequentlyVisited: List<HistoryItem>,
     onFavoriteClick: (String) -> Unit,
     onVoiceSearchClick: () -> Unit,
     onQrScanClick: () -> Unit,
@@ -54,7 +58,7 @@ fun NewTabDashboard(
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(48.dp))
+            Spacer(modifier = Modifier.height(32.dp))
             
             // Branding or Search Prompt
             Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.primary)
@@ -65,7 +69,7 @@ fun NewTabDashboard(
                 color = MaterialTheme.colorScheme.onBackground
             )
             
-            Spacer(modifier = Modifier.height(48.dp))
+            Spacer(modifier = Modifier.height(32.dp))
             
             // Quick Actions
             Row(
@@ -87,7 +91,26 @@ fun NewTabDashboard(
                 QuickActionItem(icon = Icons.Default.Edit, label = "Notes", onClick = onNotesClick, modifier = Modifier.weight(1f))
             }
 
-            Spacer(modifier = Modifier.height(48.dp))
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Frequently Visited
+            if (frequentlyVisited.isNotEmpty()) {
+                Text(
+                    text = "Frequently Visited",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.align(Alignment.Start).padding(bottom = 8.dp)
+                )
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth().height(100.dp)
+                ) {
+                    items(frequentlyVisited) { historyItem ->
+                        FrequentSiteTile(historyItem = historyItem, onClick = { onFavoriteClick(historyItem.url) })
+                    }
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+            }
 
             // Favorites Tiles
             if (favorites.isNotEmpty()) {
@@ -95,7 +118,7 @@ fun NewTabDashboard(
                     text = "Favorites",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.align(Alignment.Start).padding(bottom = 16.dp)
+                    modifier = Modifier.align(Alignment.Start).padding(bottom = 8.dp)
                 )
                 
                 LazyVerticalGrid(
@@ -114,6 +137,43 @@ fun NewTabDashboard(
                 Text("No favorites yet", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(modifier = Modifier.weight(1f))
             }
+        }
+    }
+}
+
+@Composable
+fun FrequentSiteTile(
+    historyItem: HistoryItem,
+    onClick: () -> Unit
+) {
+    DepthCard(onClick = onClick, modifier = Modifier.width(80.dp)) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(4.dp)
+        ) {
+            FrostedGlassSurface(
+                shape = RoundedCornerShape(20.dp),
+                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.4f),
+                borderColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f),
+                blurRadius = 16.dp,
+                modifier = Modifier.size(56.dp)
+            ) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = (historyItem.title?.take(1) ?: historyItem.url.replace("https://","").replace("http://","").take(1)).uppercase(),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.secondary,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = historyItem.title ?: historyItem.url.replace("https://","").replace("http://","").substringBefore("/"),
+                style = MaterialTheme.typography.labelSmall,
+                maxLines = 1,
+                color = MaterialTheme.colorScheme.onBackground
+            )
         }
     }
 }

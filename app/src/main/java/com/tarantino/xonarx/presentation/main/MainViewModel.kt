@@ -36,6 +36,7 @@ data class MainUiState(
     val tabs: List<Tab> = emptyList(),
     val tabGroups: List<TabGroup> = emptyList(),
     val favorites: List<Bookmark> = emptyList(),
+    val frequentlyVisited: List<HistoryItem> = emptyList(),
     val activeTab: Tab? = null,
     val isLoading: Boolean = false,
     val isReady: Boolean = false
@@ -65,14 +66,19 @@ class MainViewModel @Inject constructor(
                 combine(
                     tabRepository.observeTabs(identity.id),
                     tabGroupRepository.observeGroups(identity.id),
-                    bookmarkRepository.observeBookmarks(identity.id)
-                ) { tabs, groups, bookmarks ->
+                    bookmarkRepository.observeBookmarks(identity.id),
+                    historyRepository.observeHistory(identity.id)
+                ) { tabs, groups, bookmarks, history ->
+                    val frequent = history.sortedByDescending { it.visitCount }
+                        .take(6)
+                        
                     MainUiState(
                         activeIdentity = identity,
                         identities = allIdentities,
                         tabs = tabs,
                         tabGroups = groups,
                         favorites = bookmarks.filter { it.isFavorite },
+                        frequentlyVisited = frequent,
                         activeTab = tabs.find { it.isActive },
                         isReady = true
                     )

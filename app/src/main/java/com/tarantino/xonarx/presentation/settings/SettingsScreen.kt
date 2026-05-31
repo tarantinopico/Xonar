@@ -123,6 +123,18 @@ class SettingsViewModel @Inject constructor(
             settingsRepository.updateDataSaverEnabled(enabled)
         }
     }
+
+    fun toggleSmartUrlCopy(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateSmartUrlCopyEnabled(enabled)
+        }
+    }
+
+    fun toggleBackgroundVideoPlayback(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateBackgroundVideoPlayback(enabled)
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -218,6 +230,26 @@ fun SettingsScreen(
                                 Switch(
                                     checked = prefs.dataSaverEnabled,
                                     onCheckedChange = { viewModel.toggleDataSaver(it) }
+                                )
+                            }
+                        )
+                        SettingsItem(
+                            title = "Smart URL Copy",
+                            subtitle = "Strip scheme and slash when copying URLs",
+                            trailing = {
+                                Switch(
+                                    checked = prefs.smartUrlCopyEnabled,
+                                    onCheckedChange = { viewModel.toggleSmartUrlCopy(it) }
+                                )
+                            }
+                        )
+                        SettingsItem(
+                            title = "Background Video",
+                            subtitle = "Allow video playback when app is in background",
+                            trailing = {
+                                Switch(
+                                    checked = prefs.backgroundVideoPlayback,
+                                    onCheckedChange = { viewModel.toggleBackgroundVideoPlayback(it) }
                                 )
                             }
                         )

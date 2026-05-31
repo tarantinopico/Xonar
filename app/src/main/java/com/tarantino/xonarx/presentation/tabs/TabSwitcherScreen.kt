@@ -146,6 +146,44 @@ fun TabSwitcherScreen(
                         },
                         actions = {
                             var showMenu by remember { mutableStateOf(false) }
+                            var confirmCloseOthers by remember { mutableStateOf(false) }
+                            var confirmCloseAll by remember { mutableStateOf(false) }
+
+                            if (confirmCloseAll) {
+                                AlertDialog(
+                                    onDismissRequest = { confirmCloseAll = false },
+                                    title = { Text("Close All Tabs") },
+                                    text = { Text("Are you sure you want to close all tabs?") },
+                                    confirmButton = {
+                                        TextButton(onClick = {
+                                            uiState.tabs.forEach { viewModel.closeTab(it) }
+                                            confirmCloseAll = false
+                                        }) { Text("Close All") }
+                                    },
+                                    dismissButton = {
+                                        TextButton(onClick = { confirmCloseAll = false }) { Text("Cancel") }
+                                    }
+                                )
+                            }
+                            
+                            if (confirmCloseOthers) {
+                                AlertDialog(
+                                    onDismissRequest = { confirmCloseOthers = false },
+                                    title = { Text("Close Other Tabs") },
+                                    text = { Text("Are you sure you want to close all other tabs? Pinned tabs and the current tab will be kept.") },
+                                    confirmButton = {
+                                        TextButton(onClick = {
+                                            val activeTabId = uiState.activeTab?.id
+                                            uiState.tabs.filter { it.id != activeTabId && !it.isPinned }.forEach { viewModel.closeTab(it) }
+                                            confirmCloseOthers = false
+                                        }) { Text("Close") }
+                                    },
+                                    dismissButton = {
+                                        TextButton(onClick = { confirmCloseOthers = false }) { Text("Cancel") }
+                                    }
+                                )
+                            }
+
                             IconButton(onClick = { showMenu = true }) {
                                 Icon(Icons.Default.MoreVert, contentDescription = "More")
                             }
@@ -164,7 +202,7 @@ fun TabSwitcherScreen(
                                     DropdownMenuItem(
                                         text = { Text("Close All Tabs") },
                                         onClick = {
-                                            uiState.tabs.forEach { viewModel.closeTab(it) }
+                                            confirmCloseAll = true
                                             showMenu = false
                                         }
                                     )
@@ -173,7 +211,7 @@ fun TabSwitcherScreen(
                                         DropdownMenuItem(
                                             text = { Text("Close All Except Current") },
                                             onClick = {
-                                                uiState.tabs.filter { it.id != activeTabId }.forEach { viewModel.closeTab(it) }
+                                                confirmCloseOthers = true
                                                 showMenu = false
                                             }
                                         )
@@ -231,6 +269,7 @@ fun TabSwitcherScreen(
                                         
                                         items(tabsInGroup, key = { it.id }) { tabInGroup ->
                                             val session = browserViewModel.sessionManager.getOrCreateSession(tabInGroup.id, tabInGroup.identityId)
+                                            val isLoading by session.isLoading.collectAsState()
                                             Box(modifier = Modifier.padding(start = 12.dp)) {
                                                 TabCard(
                                                     tab = tabInGroup,
@@ -245,7 +284,8 @@ fun TabSwitcherScreen(
                                                     onMoveOut = { viewModel.moveTabToGroup(tabInGroup.id, null) },
                                                     groupCount = uiState.tabGroups.size,
                                                     onMoveToGroup = { gid -> viewModel.moveTabToGroup(tabInGroup.id, gid) },
-                                                    availableGroups = uiState.tabGroups.filter { it.id != group.id }
+                                                    availableGroups = uiState.tabGroups.filter { it.id != group.id },
+                                                    isLoading = isLoading
                                                 )
                                             }
                                         }
@@ -264,6 +304,7 @@ fun TabSwitcherScreen(
                         } else {
                             item(key = tab.id) {
                                 val session = browserViewModel.sessionManager.getOrCreateSession(tab.id, tab.identityId)
+                                val isLoading by session.isLoading.collectAsState()
                                 TabCard(
                                     tab = tab,
                                     isSelected = tab.id == uiState.activeTab?.id,
@@ -277,7 +318,8 @@ fun TabSwitcherScreen(
                                     onMoveOut = null,
                                     groupCount = uiState.tabGroups.size,
                                     onMoveToGroup = { gid -> viewModel.moveTabToGroup(tab.id, gid) },
-                                    availableGroups = uiState.tabGroups
+                                    availableGroups = uiState.tabGroups,
+                                    isLoading = isLoading
                                 )
                             }
                         }
@@ -406,7 +448,8 @@ fun TabCard(
     onMoveOut: (() -> Unit)?,
     groupCount: Int,
     onMoveToGroup: (String) -> Unit,
-    availableGroups: List<TabGroup>
+    availableGroups: List<TabGroup>,
+    isLoading: Boolean = false
 ) {
     DepthCard(
         onClick = onClick,
@@ -453,6 +496,15 @@ fun TabCard(
                         modifier = Modifier.weight(1f).padding(horizontal = 4.dp),
                         color = MaterialTheme.colorScheme.onSurface
                     )
+                    
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp).padding(end = 4.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    
                     IconButton(onClick = onClose, modifier = Modifier.size(24.dp)) {
                         Icon(Icons.Default.Close, contentDescription = "Close Tab", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurface)
                     }

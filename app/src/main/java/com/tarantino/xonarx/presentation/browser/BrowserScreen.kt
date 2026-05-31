@@ -108,6 +108,13 @@ fun BrowserScreen(
         }
     }
 
+    LaunchedEffect(preferences.backgroundVideoPlayback, uiState.activeTab?.id) {
+        uiState.activeTab?.id?.let { activeTabId ->
+            val session = browserViewModel.sessionManager.getOrCreateSession(activeTabId, uiState.activeTab?.identityId ?: "")
+            session.webView?.backgroundVideoPlaybackEnabled = preferences.backgroundVideoPlayback
+        }
+    }
+
     LaunchedEffect(preferences.defaultPageZoom, uiState.activeTab?.id) {
         uiState.activeTab?.id?.let { activeTabId ->
             val session = browserViewModel.sessionManager.getOrCreateSession(activeTabId, uiState.activeTab?.identityId ?: "")
@@ -308,6 +315,7 @@ fun BrowserScreen(
             } else {
                 NewTabDashboard(
                     favorites = uiState.favorites,
+                    frequentlyVisited = uiState.frequentlyVisited,
                     onFavoriteClick = { url -> viewModel.navigate(url) },
                     onVoiceSearchClick = { /* Not fully implemented */ },
                     onQrScanClick = {
@@ -611,8 +619,13 @@ fun BrowserScreen(
             onFindInPageClick = { isFindInPageActive = true },
             onCopyLinkClick = {
                 uiState.activeTab?.url?.let { url ->
+                    val finalUrl = if (preferences.smartUrlCopyEnabled) {
+                        url.removePrefix("http://").removePrefix("https://").removeSuffix("/")
+                    } else {
+                        url
+                    }
                     val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
-                    clipboard?.setPrimaryClip(android.content.ClipData.newPlainText("URL", url))
+                    clipboard?.setPrimaryClip(android.content.ClipData.newPlainText("URL", finalUrl))
                     com.tarantino.xonarx.presentation.util.HapticFeedbackHelper.performLightHaptic(currentContext, preferences.hapticFeedbackEnabled)
                 }
             },

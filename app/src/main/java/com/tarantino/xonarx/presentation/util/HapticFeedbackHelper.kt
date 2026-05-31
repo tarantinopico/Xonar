@@ -38,6 +38,23 @@ object HapticFeedbackHelper {
         }
     }
 
+    fun performSuccessHaptic(context: Context) {
+        try {
+            val vibrator = getVibrator(context) ?: return
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                // For success, a double click or tick pattern is common
+                vibrator.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_DOUBLE_CLICK))
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                vibrator.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK))
+            } else {
+                @Suppress("DEPRECATION")
+                vibrator.vibrate(longArrayOf(0, 30, 50, 30), -1)
+            }
+        } catch (e: Exception) {
+            // Ignore
+        }
+    }
+
     private fun getVibrator(context: Context): Vibrator? {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager

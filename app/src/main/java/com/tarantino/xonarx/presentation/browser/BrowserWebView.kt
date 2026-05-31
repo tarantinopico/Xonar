@@ -6,6 +6,7 @@ import android.graphics.Canvas
 import android.net.Uri
 import android.view.GestureDetector
 import android.view.MotionEvent
+import android.view.View
 import android.webkit.DownloadListener
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
@@ -32,6 +33,8 @@ class BrowserWebView(
 ) : WebView(context) {
 
     var onPageUpdate: ((String, String?) -> Unit)? = null
+    var onLoadingStateChanged: ((Boolean) -> Unit)? = null
+    var backgroundVideoPlaybackEnabled: Boolean = false
 
     fun capturePreview(): Bitmap? {
         if (width <= 0 || height <= 0) return null
@@ -58,6 +61,15 @@ class BrowserWebView(
         // Can optionally also inject JS to block media tags if really needed
     }
 
+    override fun onWindowVisibilityChanged(visibility: Int) {
+        if (visibility != View.VISIBLE && backgroundVideoPlaybackEnabled) {
+            // Do not pause the WebView and its timers if background video playback is requested
+            super.onWindowVisibilityChanged(visibility)
+            return
+        }
+        super.onWindowVisibilityChanged(visibility)
+    }
+
     init {
         settings.apply {
             javaScriptEnabled = true
@@ -67,9 +79,13 @@ class BrowserWebView(
             setSupportZoom(true)
             builtInZoomControls = true
             displayZoomControls = false
+            mediaPlaybackRequiresUserGesture = false
         }
         webViewClient = BrowserWebViewClient(adBlockerEngine, parentalControlEngine, identityId) {
             onPageUpdate?.invoke(url ?: "", title)
+        }
+        (webViewClient as BrowserWebViewClient).onLoadingStateChanged = { loading ->
+            onLoadingStateChanged?.invoke(loading)
         }
         webChromeClient = BrowserWebChromeClient()
         
@@ -86,6 +102,13 @@ class BrowserWebViewClient(
     private val identityId: String,
     private val onPageUpdateCallback: () -> Unit
 ) : WebViewClient() {
+    
+    var onLoadingStateChanged: ((Boolean) -> Unit)? = null
+
+    override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
+        super.onPageStarted(view, url, favicon)
+        onLoadingStateChanged?.invoke(true)
+    }
 
     override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
         val url = request?.url?.toString() ?: return false
@@ -110,6 +133,7 @@ class BrowserWebViewClient(
 
     override fun onPageFinished(view: WebView?, url: String?) {
         super.onPageFinished(view, url)
+        onLoadingStateChanged?.invoke(false)
         onPageUpdateCallback()
     }
 }

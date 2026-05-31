@@ -45,6 +45,9 @@ class SettingsRepositoryImpl @Inject constructor(
         val WEB_NOTIFICATIONS = booleanPreferencesKey("web_notifications")
         val DEFAULT_PAGE_ZOOM = intPreferencesKey("default_page_zoom")
         val THUMBNAIL_SIZE = stringPreferencesKey("thumbnail_size")
+
+        val SMART_URL_COPY = booleanPreferencesKey("smart_url_copy")
+        val BACKGROUND_VIDEO_PLAYBACK = booleanPreferencesKey("background_video_playback")
     }
 
     override val preferences: Flow<AppPreferences> = context.dataStore.data.map { prefs ->
@@ -73,7 +76,9 @@ class SettingsRepositoryImpl @Inject constructor(
             ntpWidgets = ntpWidgetsList,
             webNotificationsEnabled = prefs[Keys.WEB_NOTIFICATIONS] ?: true,
             defaultPageZoom = prefs[Keys.DEFAULT_PAGE_ZOOM] ?: 100,
-            thumbnailSize = prefs[Keys.THUMBNAIL_SIZE] ?: "medium"
+            thumbnailSize = prefs[Keys.THUMBNAIL_SIZE] ?: "medium",
+            smartUrlCopyEnabled = prefs[Keys.SMART_URL_COPY] ?: true,
+            backgroundVideoPlayback = prefs[Keys.BACKGROUND_VIDEO_PLAYBACK] ?: false
         )
     }
 
@@ -204,4 +209,13 @@ class SettingsRepositoryImpl @Inject constructor(
     override suspend fun updateThumbnailSize(size: String) {
         context.dataStore.edit { prefs -> prefs[Keys.THUMBNAIL_SIZE] = size }
     }
+
+    override suspend fun updateSmartUrlCopyEnabled(enabled: Boolean) {
+        context.dataStore.edit { prefs -> prefs[Keys.SMART_URL_COPY] = enabled }
+    }
+
+    override suspend fun updateBackgroundVideoPlayback(enabled: Boolean) {
+        context.dataStore.edit { prefs -> prefs[Keys.BACKGROUND_VIDEO_PLAYBACK] = enabled }
+    }
 }
+

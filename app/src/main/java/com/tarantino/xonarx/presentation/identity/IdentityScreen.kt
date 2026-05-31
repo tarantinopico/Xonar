@@ -71,6 +71,7 @@ class IdentityViewModel @Inject constructor(
                 if (activity != null) {
                     val success = biometricAuthManager.authenticate(activity, "Unlock Identity")
                     if (success) {
+                        com.tarantino.xonarx.presentation.util.HapticFeedbackHelper.performSuccessHaptic(activity)
                         identityManager.switchIdentity(id)
                         onComplete()
                     }

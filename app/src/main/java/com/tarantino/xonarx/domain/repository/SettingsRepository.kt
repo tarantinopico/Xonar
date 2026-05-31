@@ -31,7 +31,11 @@ data class AppPreferences(
     val ntpWidgets: List<String> = listOf("favorites", "recent_tabs", "quick_actions"),
     val webNotificationsEnabled: Boolean = true,
     val defaultPageZoom: Int = 100,
-    val thumbnailSize: String = "medium"
+    val thumbnailSize: String = "medium",
+
+    // Utilities
+    val smartUrlCopyEnabled: Boolean = true,
+    val backgroundVideoPlayback: Boolean = false
 )
 
 enum class ThemeMode { LIGHT, DARK, SYSTEM }
@@ -61,4 +65,8 @@ interface SettingsRepository {
     suspend fun updateWebNotificationsEnabled(enabled: Boolean)
     suspend fun updateDefaultPageZoom(zoom: Int)
     suspend fun updateThumbnailSize(size: String)
+
+    suspend fun updateSmartUrlCopyEnabled(enabled: Boolean)
+    suspend fun updateBackgroundVideoPlayback(enabled: Boolean)
 }
+
