@@ -1,6 +1,7 @@
 package com.tarantino.xonarx.presentation.browser
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.webkit.WebView
 import java.util.concurrent.ConcurrentHashMap
 import com.tarantino.xonarx.domain.usecase.AdBlockerEngine
@@ -9,7 +10,8 @@ import com.tarantino.xonarx.domain.usecase.DownloadManagerUseCase
 data class TabSession(
     val tabId: String,
     val identityId: String,
-    var webView: BrowserWebView? = null
+    var webView: BrowserWebView? = null,
+    var previewBitmap: Bitmap? = null
 )
 
 class BrowserSessionManager(

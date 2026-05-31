@@ -1,5 +1,7 @@
 package com.tarantino.xonarx.presentation.tabs
 
+import android.graphics.Bitmap
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -18,15 +20,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tarantino.xonarx.domain.model.Tab
 import com.tarantino.xonarx.presentation.main.MainViewModel
+import com.tarantino.xonarx.presentation.browser.BrowserViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TabSwitcherScreen(
     viewModel: MainViewModel = hiltViewModel(),
+    browserViewModel: BrowserViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -67,9 +73,11 @@ fun TabSwitcherScreen(
                     .background(MaterialTheme.colorScheme.background)
             ) {
                 items(uiState.tabs) { tab ->
+                    val session = browserViewModel.sessionManager.getOrCreateSession(tab.id, tab.identityId)
                     TabCard(
                         tab = tab,
                         isSelected = tab.id == uiState.activeTab?.id,
+                        previewBitmap = session.previewBitmap,
                         onClick = {
                             viewModel.selectTab(tab)
                             onNavigateBack()
@@ -86,6 +94,7 @@ fun TabSwitcherScreen(
 fun TabCard(
     tab: Tab,
     isSelected: Boolean,
+    previewBitmap: Bitmap?,
     onClick: () -> Unit,
     onClose: () -> Unit
 ) {
@@ -125,8 +134,18 @@ fun TabCard(
                     .clip(RoundedCornerShape(8.dp))
                     .background(Color.White)
             ) {
-                // Mock preview snapshot. In a real app we'd load the webview bitmap here.
-                Text(tab.url, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(4.dp), color = Color.Gray)
+                if (previewBitmap != null) {
+                    Image(
+                        bitmap = previewBitmap.asImageBitmap(),
+                        contentDescription = "Page Preview",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Box(modifier = Modifier.fillMaxSize().background(Color.LightGray), contentAlignment = Alignment.Center) {
+                        Text(tab.url, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(4.dp), color = Color.DarkGray)
+                    }
+                }
             }
         }
     }

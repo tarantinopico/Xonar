@@ -33,8 +33,6 @@ import com.tarantino.xonarx.domain.model.Bookmark
 import com.tarantino.xonarx.presentation.main.MainUiState
 import com.tarantino.xonarx.presentation.main.MainViewModel
 
-import com.tarantino.xonarx.domain.usecase.ReaderModeEngine
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BrowserScreen(
@@ -54,8 +52,8 @@ fun BrowserScreen(
     var menuExpanded by remember { mutableStateOf(false) }
 
     Scaffold(
-        bottomBar = {
-            BrowserBottomBar(
+        topBar = {
+            BrowserTopBar(
                 uiState = uiState,
                 isEditingUrl = isEditingUrl,
                 onUrlEditStateChange = { isEditingUrl = it },
@@ -66,7 +64,12 @@ fun BrowserScreen(
                     } 
                 },
                 onMenuClick = { menuExpanded = true },
-                onTabCountClick = onNavigateToTabSwitcher,
+                onTabCountClick = {
+                    uiState.activeTab?.let { activeTab ->
+                        browserViewModel.capturePreviewForTab(activeTab.id, activeTab.identityId)
+                    }
+                    onNavigateToTabSwitcher()
+                },
                 onSwipeLeft = { viewModel.switchNextIdentity() },
                 onSwipeRight = { viewModel.switchPreviousIdentity() }
             )
@@ -105,12 +108,6 @@ fun BrowserScreen(
                     onNavigateToBookmarks = onNavigateToBookmarks,
                     onNavigateToDownloads = onNavigateToDownloads,
                     onNavigateToNotes = onNavigateToNotes,
-                    onReaderModeClick = {
-                        val session = activeTab?.id?.let { browserViewModel.sessionManager.getOrCreateSession(it, activeTab.identityId) }
-                        session?.webView?.let { wv ->
-                            browserViewModel.readerModeEngine.enableReaderMode(wv)
-                        }
-                    },
                     onAddToFavoritesClick = { viewModel.addToFavorites() }
                 )
             }
@@ -118,14 +115,14 @@ fun BrowserScreen(
             // Render Suggestions if editing
             AnimatedVisibility(
                 visible = isEditingUrl,
-                enter = expandVertically(expandFrom = Alignment.Bottom),
-                exit = shrinkVertically(shrinkTowards = Alignment.Bottom),
-                modifier = Modifier.align(Alignment.BottomCenter)
+                enter = expandVertically(expandFrom = Alignment.Top),
+                exit = shrinkVertically(shrinkTowards = Alignment.Top),
+                modifier = Modifier.align(Alignment.TopCenter)
             ) {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     tonalElevation = 8.dp,
-                    shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+                    shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp)
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp)
@@ -234,7 +231,7 @@ fun EmptyBrowserState(favorites: List<Bookmark>, onFavoriteClick: (String) -> Un
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BrowserBottomBar(
+fun BrowserTopBar(
     uiState: MainUiState,
     isEditingUrl: Boolean,
     onUrlEditStateChange: (Boolean) -> Unit,
@@ -272,8 +269,7 @@ fun BrowserBottomBar(
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 3.dp,
         modifier = Modifier
-            .windowInsetsPadding(WindowInsets.navigationBars)
-            .windowInsetsPadding(WindowInsets.ime)
+            .windowInsetsPadding(WindowInsets.statusBars)
             .pointerInput(isEditingUrl) {
                 if (isEditingUrl) return@pointerInput
                 detectHorizontalDragGestures(
@@ -380,7 +376,6 @@ fun BrowserMenu(
     onNavigateToBookmarks: () -> Unit,
     onNavigateToDownloads: () -> Unit,
     onNavigateToNotes: () -> Unit,
-    onReaderModeClick: () -> Unit,
     onAddToFavoritesClick: () -> Unit
 ) {
     DropdownMenu(
@@ -434,14 +429,6 @@ fun BrowserMenu(
                 onDismiss()
             },
             leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
-        )
-        DropdownMenuItem(
-            text = { Text("Reader Mode") },
-            onClick = {
-                onReaderModeClick()
-                onDismiss()
-            },
-            leadingIcon = { Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null) }
         )
         HorizontalDivider()
         DropdownMenuItem(

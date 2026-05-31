@@ -2,9 +2,11 @@ package com.tarantino.xonarx.presentation.theme
 
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 
 private val LightColors = lightColorScheme(
     primary = md_theme_light_primary,
@@ -66,6 +68,14 @@ private val DarkColors = darkColorScheme(
     surfaceTint = md_theme_dark_surfaceTint,
 )
 
+val XonarShapes = Shapes(
+    extraSmall = RoundedCornerShape(16.dp),
+    small = RoundedCornerShape(16.dp),
+    medium = RoundedCornerShape(16.dp),
+    large = RoundedCornerShape(24.dp),
+    extraLarge = RoundedCornerShape(32.dp)
+)
+
 @Composable
 fun XonarTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -84,6 +94,8 @@ fun XonarTheme(
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
+        shapes = XonarShapes,
         content = content
     )
 }
+

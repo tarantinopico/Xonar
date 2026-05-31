@@ -1,6 +1,8 @@
 package com.tarantino.xonarx.presentation.browser
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.net.Uri
 import android.view.GestureDetector
 import android.view.MotionEvent
@@ -20,6 +22,26 @@ class BrowserWebView(
 ) : WebView(context) {
 
     var onPageUpdate: ((String, String?) -> Unit)? = null
+
+    fun capturePreview(): Bitmap? {
+        if (width <= 0 || height <= 0) return null
+        return try {
+            val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bitmap)
+            draw(canvas)
+            val scaledWidth = width / 3
+            val scaledHeight = height / 3
+            if (scaledWidth > 0 && scaledHeight > 0) {
+                val scaled = Bitmap.createScaledBitmap(bitmap, scaledWidth, scaledHeight, true)
+                bitmap.recycle()
+                scaled
+            } else {
+                bitmap
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
 
     private val gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
         private val SWIPE_THRESHOLD = 200
