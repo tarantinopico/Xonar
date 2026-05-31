@@ -20,8 +20,10 @@ object BrowserModule {
     fun provideBrowserSessionManager(
         @ApplicationContext context: Context,
         adBlockerEngine: AdBlockerEngine,
-        downloadManagerUseCase: DownloadManagerUseCase
+        userscriptEngine: com.tarantino.xonarx.domain.usecase.UserscriptEngine,
+        downloadManagerUseCase: DownloadManagerUseCase,
+        parentalControlEngine: com.tarantino.xonarx.domain.usecase.ParentalControlEngine
     ): BrowserSessionManager {
-        return BrowserSessionManager(context, adBlockerEngine, downloadManagerUseCase)
+        return BrowserSessionManager(context, adBlockerEngine, userscriptEngine, downloadManagerUseCase, parentalControlEngine)
     }
 }

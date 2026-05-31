@@ -21,7 +21,9 @@ data class TabSession(
 class BrowserSessionManager(
     private val applicationContext: Context,
     private val adBlockerEngine: AdBlockerEngine,
-    private val downloadManagerUseCase: DownloadManagerUseCase
+    private val userscriptEngine: com.tarantino.xonarx.domain.usecase.UserscriptEngine,
+    private val downloadManagerUseCase: DownloadManagerUseCase,
+    private val parentalControlEngine: com.tarantino.xonarx.domain.usecase.ParentalControlEngine
 ) {
     private val sessions = ConcurrentHashMap<String, TabSession>()
     
@@ -48,6 +50,8 @@ class BrowserSessionManager(
                 val wv = BrowserWebView(
                     applicationContext,
                     adBlockerEngine,
+                    userscriptEngine,
+                    parentalControlEngine,
                     identityId,
                     onDownloadStarted = { url, fileName -> 
                         downloadManagerUseCase.startDownload(url, fileName, identityId)
@@ -90,6 +94,10 @@ class BrowserSessionManager(
             wv.destroy()
         }
         previewCache.remove(tabId)
+    }
+    
+    fun getAllSessionsForIdentity(identityId: String): List<TabSession> {
+        return sessions.values.filter { it.identityId == identityId }
     }
     
     fun clearIdentitySessions(identityId: String) {

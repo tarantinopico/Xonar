@@ -23,7 +23,13 @@ data class AppPreferences(
     val doubleTapQuickSwitch: Boolean = true,
     val reachabilityEnabled: Boolean = true,
     val hapticFeedbackEnabled: Boolean = true,
-    val customSearchEngines: List<CustomSearchEngine> = emptyList()
+    val customSearchEngines: List<CustomSearchEngine> = emptyList(),
+    
+    // Premium features
+    val dataSaverEnabled: Boolean = false,
+    val hasCompletedOnboarding: Boolean = false,
+    val ntpWidgets: List<String> = listOf("favorites", "recent_tabs", "quick_actions"),
+    val webNotificationsEnabled: Boolean = true
 )
 
 enum class ThemeMode { LIGHT, DARK, SYSTEM }
@@ -46,4 +52,9 @@ interface SettingsRepository {
     suspend fun updateHapticFeedbackEnabled(enabled: Boolean)
     suspend fun addCustomSearchEngine(engine: CustomSearchEngine)
     suspend fun removeCustomSearchEngine(id: String)
+    
+    suspend fun updateDataSaverEnabled(enabled: Boolean)
+    suspend fun completeOnboarding()
+    suspend fun updateNtpWidgets(widgets: List<String>)
+    suspend fun updateWebNotificationsEnabled(enabled: Boolean)
 }

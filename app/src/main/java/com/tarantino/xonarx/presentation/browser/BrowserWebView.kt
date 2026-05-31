@@ -24,11 +24,14 @@ import com.tarantino.xonarx.domain.usecase.AdBlockerEngine
 class BrowserWebView(
     context: Context,
     private val adBlockerEngine: AdBlockerEngine,
+    private val userscriptEngine: com.tarantino.xonarx.domain.usecase.UserscriptEngine,
+    private val parentalControlEngine: com.tarantino.xonarx.domain.usecase.ParentalControlEngine,
     val identityId: String,
     private val onDownloadStarted: (String, String) -> Unit = { _, _ -> }
 ) : WebView(context) {
 
     var onPageUpdate: ((String, String?) -> Unit)? = null
+    var scripts: List<com.tarantino.xonarx.domain.model.Userscript> = emptyList()
 
     fun capturePreview(): Bitmap? {
         if (width <= 0 || height <= 0) return null
@@ -50,6 +53,11 @@ class BrowserWebView(
         }
     }
 
+    fun setDataSaverEnabled(enabled: Boolean) {
+        settings.loadsImagesAutomatically = !enabled
+        // Can optionally also inject JS to block media tags if really needed
+    }
+
     init {
         settings.apply {
             javaScriptEnabled = true
@@ -60,13 +68,14 @@ class BrowserWebView(
             builtInZoomControls = true
             displayZoomControls = false
         }
-        webViewClient = BrowserWebViewClient(adBlockerEngine) {
+        webViewClient = BrowserWebViewClient(adBlockerEngine, parentalControlEngine, identityId, { url -> 
+            userscriptEngine.injectScripts(this, url, scripts)
+        }) {
             onPageUpdate?.invoke(url ?: "", title)
         }
         webChromeClient = BrowserWebChromeClient()
         
         setDownloadListener { url, _, contentDisposition, mimetype, _ ->
-            // In a real app we'd parse contentDisposition for the file name
             val fileName = Uri.parse(url).lastPathSegment ?: "downloaded_file"
             onDownloadStarted(url, fileName)
         }
@@ -75,8 +84,22 @@ class BrowserWebView(
 
 class BrowserWebViewClient(
     private val adBlockerEngine: AdBlockerEngine,
+    private val parentalControlEngine: com.tarantino.xonarx.domain.usecase.ParentalControlEngine,
+    private val identityId: String,
+    private val onInjectScripts: (String) -> Unit,
     private val onPageUpdateCallback: () -> Unit
 ) : WebViewClient() {
+
+    override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+        val url = request?.url?.toString() ?: return false
+        if (!parentalControlEngine.isUrlAllowed(identityId, url)) {
+            // Block loading this URL
+            view?.loadData("<html><body><h1>Access Restricted</h1><p>This identity is not allowed to access this domain.</p></body></html>", "text/html", "UTF-8")
+            return true
+        }
+        return super.shouldOverrideUrlLoading(view, request)
+    }
+
     override fun shouldInterceptRequest(
         view: WebView?,
         request: WebResourceRequest?
@@ -90,6 +113,9 @@ class BrowserWebViewClient(
 
     override fun onPageFinished(view: WebView?, url: String?) {
         super.onPageFinished(view, url)
+        if (url != null) {
+            onInjectScripts(url)
+        }
         onPageUpdateCallback()
     }
 }

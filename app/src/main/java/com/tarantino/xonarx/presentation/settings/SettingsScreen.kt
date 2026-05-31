@@ -102,6 +102,12 @@ class SettingsViewModel @Inject constructor(
             settingsRepository.updateHapticFeedbackEnabled(enabled)
         }
     }
+    
+    fun toggleDataSaver(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateDataSaverEnabled(enabled)
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -171,6 +177,18 @@ fun SettingsScreen(
                     color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.labelLarge,
                     modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp)
+                )
+            }
+            item {
+                ListItem(
+                    headlineContent = { Text("Data Saver") },
+                    supportingContent = { Text("Reduce data usage by blocking images and heavy media") },
+                    trailingContent = {
+                        Switch(
+                            checked = prefs.dataSaverEnabled,
+                            onCheckedChange = { viewModel.toggleDataSaver(it) }
+                        )
+                    }
                 )
             }
             item {

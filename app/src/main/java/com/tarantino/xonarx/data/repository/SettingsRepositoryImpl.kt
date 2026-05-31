@@ -38,12 +38,19 @@ class SettingsRepositoryImpl @Inject constructor(
         val REACHABILITY = booleanPreferencesKey("reachability")
         val HAPTIC_FEEDBACK = booleanPreferencesKey("haptic_feedback")
         val CUSTOM_SEARCH_ENGINES = stringPreferencesKey("custom_search_engines")
+        
+        val DATA_SAVER = booleanPreferencesKey("data_saver")
+        val HAS_COMPLETED_ONBOARDING = booleanPreferencesKey("has_completed_onboarding")
+        val NTP_WIDGETS = stringPreferencesKey("ntp_widgets")
+        val WEB_NOTIFICATIONS = booleanPreferencesKey("web_notifications")
     }
 
     override val preferences: Flow<AppPreferences> = context.dataStore.data.map { prefs ->
         val themeModeStr = prefs[Keys.THEME_MODE] ?: ThemeMode.SYSTEM.name
         val customSearchEnginesJson = prefs[Keys.CUSTOM_SEARCH_ENGINES] ?: "[]"
         val customSearchEnginesList = parseCustomSearchEngines(customSearchEnginesJson)
+        val ntpWidgetsStr = prefs[Keys.NTP_WIDGETS] ?: "favorites,recent_tabs,quick_actions"
+        val ntpWidgetsList = ntpWidgetsStr.split(",").filter { it.isNotBlank() }
         
         AppPreferences(
             lastActiveIdentityId = prefs[Keys.LAST_IDENTITY_ID],
@@ -58,7 +65,11 @@ class SettingsRepositoryImpl @Inject constructor(
             doubleTapQuickSwitch = prefs[Keys.DOUBLE_TAP_QUICK_SWITCH] ?: true,
             reachabilityEnabled = prefs[Keys.REACHABILITY] ?: true,
             hapticFeedbackEnabled = prefs[Keys.HAPTIC_FEEDBACK] ?: true,
-            customSearchEngines = customSearchEnginesList
+            customSearchEngines = customSearchEnginesList,
+            dataSaverEnabled = prefs[Keys.DATA_SAVER] ?: false,
+            hasCompletedOnboarding = prefs[Keys.HAS_COMPLETED_ONBOARDING] ?: false,
+            ntpWidgets = ntpWidgetsList,
+            webNotificationsEnabled = prefs[Keys.WEB_NOTIFICATIONS] ?: true
         )
     }
 
@@ -164,5 +175,21 @@ class SettingsRepositoryImpl @Inject constructor(
             current.removeAll { it.id == id }
             prefs[Keys.CUSTOM_SEARCH_ENGINES] = serializeCustomSearchEngines(current)
         }
+    }
+
+    override suspend fun updateDataSaverEnabled(enabled: Boolean) {
+        context.dataStore.edit { prefs -> prefs[Keys.DATA_SAVER] = enabled }
+    }
+
+    override suspend fun completeOnboarding() {
+        context.dataStore.edit { prefs -> prefs[Keys.HAS_COMPLETED_ONBOARDING] = true }
+    }
+
+    override suspend fun updateNtpWidgets(widgets: List<String>) {
+        context.dataStore.edit { prefs -> prefs[Keys.NTP_WIDGETS] = widgets.joinToString(",") }
+    }
+
+    override suspend fun updateWebNotificationsEnabled(enabled: Boolean) {
+        context.dataStore.edit { prefs -> prefs[Keys.WEB_NOTIFICATIONS] = enabled }
     }
 }

@@ -153,7 +153,7 @@ fun TabSwitcherScreen(
                 columns = GridCells.Fixed(2),
                 contentPadding = PaddingValues(16.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp),
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
@@ -301,11 +301,11 @@ fun TabGroupCollapsedCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(0.7f)
+            .aspectRatio(0.65f)
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             Row(
@@ -358,14 +358,14 @@ fun TabCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(0.7f)
-            .let { if (borderColor != null) it.border(2.dp, borderColor, RoundedCornerShape(16.dp)) else it }
+            .aspectRatio(0.65f)
+            .let { if (borderColor != null) it.border(2.dp, borderColor, RoundedCornerShape(24.dp)) else it }
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 8.dp else 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 12.dp else 4.dp)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             Row(

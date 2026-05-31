@@ -46,13 +46,28 @@ fun BrowserScreen(
     onNavigateToBookmarks: () -> Unit,
     onNavigateToDownloads: () -> Unit,
     onNavigateToNotes: () -> Unit,
-    onNavigateToPrivacyStats: () -> Unit
+    onNavigateToPrivacyStats: () -> Unit,
+    onNavigateToUserscripts: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val preferences by browserViewModel.preferences.collectAsState()
     val suggestions by browserViewModel.suggestions.collectAsState()
     var isEditingUrl by remember { mutableStateOf(false) }
     var menuExpanded by remember { mutableStateOf(false) }
     var showGroupDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(uiState.activeIdentity?.id) {
+        uiState.activeIdentity?.id?.let { identityId ->
+            browserViewModel.updateIdentity(identityId)
+        }
+    }
+
+    LaunchedEffect(preferences.dataSaverEnabled, uiState.activeTab?.id) {
+        uiState.activeTab?.id?.let { activeTabId ->
+            val session = browserViewModel.sessionManager.getOrCreateSession(activeTabId, uiState.activeTab?.identityId ?: "")
+            session.webView?.setDataSaverEnabled(preferences.dataSaverEnabled)
+        }
+    }
 
     if (showGroupDialog) {
         val activeIdentityId = uiState.activeIdentity?.id
@@ -92,82 +107,166 @@ fun BrowserScreen(
 
     Scaffold(
         topBar = {
-            BrowserTopBar(
-                uiState = uiState,
-                isEditingUrl = isEditingUrl,
-                onUrlEditStateChange = { isEditingUrl = it },
-                onNavigate = { url -> viewModel.navigate(url) },
-                onSearchQueryChange = { query -> 
-                    uiState.activeIdentity?.let { identity -> 
-                        browserViewModel.updateSearchQuery(query, identity.id) 
-                    } 
-                },
-                onMenuClick = { menuExpanded = true },
-                onTabCountClick = {
-                    uiState.activeTab?.let { activeTab ->
-                        browserViewModel.capturePreviewForTab(activeTab.id, activeTab.identityId)
-                    }
-                    onNavigateToTabSwitcher()
-                },
-                onSwipeLeft = { viewModel.switchNextIdentity() },
-                onSwipeRight = { viewModel.switchPreviousIdentity() },
-                menuContent = {
-                    if (menuExpanded) {
-                        val context = androidx.compose.ui.platform.LocalContext.current
-                        BrowserMenu(
-                            expanded = menuExpanded,
-                            onDismiss = { menuExpanded = false },
-                            onNavigateToIdentityManager = onNavigateToIdentityManager,
-                            onNavigateToSettings = onNavigateToSettings,
-                            onNavigateToHistory = onNavigateToHistory,
-                            onNavigateToBookmarks = onNavigateToBookmarks,
-                            onNavigateToDownloads = onNavigateToDownloads,
-                            onNavigateToNotes = onNavigateToNotes,
-                            onNavigateToPrivacyStats = onNavigateToPrivacyStats,
-                            onAddToFavoritesClick = { viewModel.addToFavorites() },
-                            onAddToGroupClick = { showGroupDialog = true },
-                            onNavigateForward = {
-                                uiState.activeTab?.let { activeTab ->
-                                    val session = browserViewModel.sessionManager.getOrCreateSession(activeTab.id, activeTab.identityId)
-                                    session.webView?.goForward()
-                                }
-                            },
-                            onScanQrClick = {
-                                browserViewModel.startQrScan { result ->
-                                    viewModel.navigate(result)
-                                }
-                            },
-                            onEnterPipClick = {
-                                val activity = context as? android.app.Activity
-                                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                                    val params = android.app.PictureInPictureParams.Builder()
-                                        // A real app would set aspect ratio based on video size here
-                                        .build()
-                                    try {
-                                        activity?.enterPictureInPictureMode(params)
-                                    } catch (e: Exception) {
-                                        e.printStackTrace()
+            if (!preferences.bottomControls) {
+                BrowserTopBar(
+                    uiState = uiState,
+                    isEditingUrl = isEditingUrl,
+                    onUrlEditStateChange = { isEditingUrl = it },
+                    onNavigate = { url -> viewModel.navigate(url) },
+                    onSearchQueryChange = { query -> 
+                        uiState.activeIdentity?.let { identity -> 
+                            browserViewModel.updateSearchQuery(query, identity.id) 
+                        } 
+                    },
+                    onMenuClick = { menuExpanded = true },
+                    onTabCountClick = {
+                        uiState.activeTab?.let { activeTab ->
+                            browserViewModel.capturePreviewForTab(activeTab.id, activeTab.identityId)
+                        }
+                        onNavigateToTabSwitcher()
+                    },
+                    onSwipeLeft = { viewModel.switchNextIdentity() },
+                    onSwipeRight = { viewModel.switchPreviousIdentity() },
+                    menuContent = {
+                        // ... menu ...
+                        if (menuExpanded) {
+                            val context = androidx.compose.ui.platform.LocalContext.current
+                            BrowserMenu(
+                                expanded = menuExpanded,
+                                onDismiss = { menuExpanded = false },
+                                onNavigateToIdentityManager = onNavigateToIdentityManager,
+                                onNavigateToSettings = onNavigateToSettings,
+                                onNavigateToHistory = onNavigateToHistory,
+                                onNavigateToBookmarks = onNavigateToBookmarks,
+                                onNavigateToDownloads = onNavigateToDownloads,
+                                onNavigateToNotes = onNavigateToNotes,
+                                onNavigateToPrivacyStats = onNavigateToPrivacyStats,
+                                onNavigateToUserscripts = onNavigateToUserscripts,
+                                onAddToFavoritesClick = { viewModel.addToFavorites() },
+                                onAddToGroupClick = { showGroupDialog = true },
+                                onNavigateForward = {
+                                    uiState.activeTab?.let { activeTab ->
+                                        val session = browserViewModel.sessionManager.getOrCreateSession(activeTab.id, activeTab.identityId)
+                                        session.webView?.goForward()
                                     }
-                                }
-                            },
-                            onPrintPdfClick = {
-                                uiState.activeTab?.let { activeTab ->
-                                    val session = browserViewModel.sessionManager.getOrCreateSession(activeTab.id, activeTab.identityId)
-                                    val wv = session.webView
-                                    if (wv != null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                                        val printManager = context.getSystemService(android.content.Context.PRINT_SERVICE) as? android.print.PrintManager
-                                        val printAdapter = wv.createPrintDocumentAdapter("Xonar_${activeTab.title}")
-                                        val printAttributes = android.print.PrintAttributes.Builder()
-                                            .setMediaSize(android.print.PrintAttributes.MediaSize.ISO_A4)
+                                },
+                                onScanQrClick = {
+                                    browserViewModel.startQrScan { result ->
+                                        viewModel.navigate(result)
+                                    }
+                                },
+                                onPrintPdfClick = {
+                                    uiState.activeTab?.let { activeTab ->
+                                        val session = browserViewModel.sessionManager.getOrCreateSession(activeTab.id, activeTab.identityId)
+                                        val wv = session.webView
+                                        if (wv != null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                                            val printManager = context.getSystemService(android.content.Context.PRINT_SERVICE) as? android.print.PrintManager
+                                            val printAdapter = wv.createPrintDocumentAdapter("Xonar_${activeTab.title}")
+                                            val printAttributes = android.print.PrintAttributes.Builder()
+                                                .setMediaSize(android.print.PrintAttributes.MediaSize.ISO_A4)
+                                                .build()
+                                            printManager?.print("Xonar Document", printAdapter, printAttributes)
+                                        }
+                                    }
+                                },
+                                onEnterPipClick = {
+                                    val activity = context as? android.app.Activity
+                                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                                        val params = android.app.PictureInPictureParams.Builder()
                                             .build()
-                                        printManager?.print("Xonar Document", printAdapter, printAttributes)
+                                        try {
+                                            activity?.enterPictureInPictureMode(params)
+                                        } catch (e: Exception) {
+                                            e.printStackTrace()
+                                        }
                                     }
                                 }
-                            }
-                        )
+                            )
+                        }
                     }
-                }
-            )
+                )
+            }
+        },
+        bottomBar = {
+            if (preferences.bottomControls) {
+                BrowserTopBar(
+                    uiState = uiState,
+                    isEditingUrl = isEditingUrl,
+                    onUrlEditStateChange = { isEditingUrl = it },
+                    onNavigate = { url -> viewModel.navigate(url) },
+                    onSearchQueryChange = { query -> 
+                        uiState.activeIdentity?.let { identity -> 
+                            browserViewModel.updateSearchQuery(query, identity.id) 
+                        } 
+                    },
+                    onMenuClick = { menuExpanded = true },
+                    onTabCountClick = {
+                        uiState.activeTab?.let { activeTab ->
+                            browserViewModel.capturePreviewForTab(activeTab.id, activeTab.identityId)
+                        }
+                        onNavigateToTabSwitcher()
+                    },
+                    onSwipeLeft = { viewModel.switchNextIdentity() },
+                    onSwipeRight = { viewModel.switchPreviousIdentity() },
+                    menuContent = {
+                        // ... menu ...
+                        if (menuExpanded) {
+                            val context = androidx.compose.ui.platform.LocalContext.current
+                            BrowserMenu(
+                                expanded = menuExpanded,
+                                onDismiss = { menuExpanded = false },
+                                onNavigateToIdentityManager = onNavigateToIdentityManager,
+                                onNavigateToSettings = onNavigateToSettings,
+                                onNavigateToHistory = onNavigateToHistory,
+                                onNavigateToBookmarks = onNavigateToBookmarks,
+                                onNavigateToDownloads = onNavigateToDownloads,
+                                onNavigateToNotes = onNavigateToNotes,
+                                onNavigateToPrivacyStats = onNavigateToPrivacyStats,
+                                onNavigateToUserscripts = onNavigateToUserscripts,
+                                onAddToFavoritesClick = { viewModel.addToFavorites() },
+                                onAddToGroupClick = { showGroupDialog = true },
+                                onNavigateForward = {
+                                    uiState.activeTab?.let { activeTab ->
+                                        val session = browserViewModel.sessionManager.getOrCreateSession(activeTab.id, activeTab.identityId)
+                                        session.webView?.goForward()
+                                    }
+                                },
+                                onScanQrClick = {
+                                    browserViewModel.startQrScan { result ->
+                                        viewModel.navigate(result)
+                                    }
+                                },
+                                onPrintPdfClick = {
+                                    uiState.activeTab?.let { activeTab ->
+                                        val session = browserViewModel.sessionManager.getOrCreateSession(activeTab.id, activeTab.identityId)
+                                        val wv = session.webView
+                                        if (wv != null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                                            val printManager = context.getSystemService(android.content.Context.PRINT_SERVICE) as? android.print.PrintManager
+                                            val printAdapter = wv.createPrintDocumentAdapter("Xonar_${activeTab.title}")
+                                            val printAttributes = android.print.PrintAttributes.Builder()
+                                                .setMediaSize(android.print.PrintAttributes.MediaSize.ISO_A4)
+                                                .build()
+                                            printManager?.print("Xonar Document", printAdapter, printAttributes)
+                                        }
+                                    }
+                                },
+                                onEnterPipClick = {
+                                    val activity = context as? android.app.Activity
+                                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                                        val params = android.app.PictureInPictureParams.Builder()
+                                            .build()
+                                        try {
+                                            activity?.enterPictureInPictureMode(params)
+                                        } catch (e: Exception) {
+                                            e.printStackTrace()
+                                        }
+                                    }
+                                }
+                            )
+                        }
+                    }
+                )
+            }
         }
     ) { paddingValues ->
         Box(
@@ -187,9 +286,23 @@ fun BrowserScreen(
                     }
                 )
             } else {
-                EmptyBrowserState(
+                NewTabDashboard(
                     favorites = uiState.favorites,
-                    onFavoriteClick = { url -> viewModel.navigate(url) }
+                    onFavoriteClick = { url -> viewModel.navigate(url) },
+                    onVoiceSearchClick = { /* Not fully implemented */ },
+                    onQrScanClick = {
+                        browserViewModel.startQrScan { result ->
+                            viewModel.navigate(result)
+                        }
+                    },
+                    onNewGroupClick = {
+                        val activeIdentityId = uiState.activeIdentity?.id
+                        if (activeIdentityId != null) {
+                            viewModel.createTabGroup("New Group", android.graphics.Color.BLUE, emptyList())
+                        }
+                    },
+                    onRecentTabsClick = onNavigateToHistory,
+                    onNotesClick = onNavigateToNotes
                 )
             }
 
@@ -344,58 +457,6 @@ fun WebViewContainer(
     )
 }
 
-@Composable
-fun EmptyBrowserState(favorites: List<Bookmark>, onFavoriteClick: (String) -> Unit) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(modifier = Modifier.height(16.dp))
-            Text("Search or type web address", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(modifier = Modifier.height(32.dp))
-            if (favorites.isNotEmpty()) {
-                // simple grid for favorites
-                androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
-                    columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(4),
-                    contentPadding = PaddingValues(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp)
-                ) {
-                    items(favorites.size) { index ->
-                        val fav = favorites[index]
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.clickable { onFavoriteClick(fav.url) }
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                // Real app would load favicon, for now fallback to initial
-                                Text(
-                                    text = fav.title.take(1).uppercase(),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = fav.title,
-                                style = MaterialTheme.typography.labelSmall,
-                                maxLines = 1,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BrowserTopBar(
@@ -548,6 +609,7 @@ fun BrowserMenu(
     onNavigateToDownloads: () -> Unit,
     onNavigateToNotes: () -> Unit,
     onNavigateToPrivacyStats: () -> Unit,
+    onNavigateToUserscripts: () -> Unit,
     onAddToFavoritesClick: () -> Unit,
     onAddToGroupClick: () -> Unit,
     onNavigateForward: () -> Unit,
@@ -655,6 +717,14 @@ fun BrowserMenu(
                 onDismiss()
             },
             leadingIcon = { Icon(Icons.Default.Security, contentDescription = null) }
+        )
+        DropdownMenuItem(
+            text = { Text("Userscripts") },
+            onClick = {
+                onNavigateToUserscripts()
+                onDismiss()
+            },
+            leadingIcon = { Icon(Icons.Default.Code, contentDescription = null) }
         )
         HorizontalDivider()
         DropdownMenuItem(

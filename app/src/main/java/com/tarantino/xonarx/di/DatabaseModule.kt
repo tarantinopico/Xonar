@@ -39,6 +39,38 @@ object DatabaseModule {
         }
     }
 
+    val MIGRATION_2_3 = object : Migration(2, 3) {
+        override fun migrate(database: SupportSQLiteDatabase) {
+            database.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `userscripts` (
+                    `id` TEXT NOT NULL,
+                    `name` TEXT NOT NULL,
+                    `code` TEXT NOT NULL,
+                    `domain` TEXT,
+                    `isEnabled` INTEGER NOT NULL,
+                    `identityId` TEXT NOT NULL,
+                    `isCss` INTEGER NOT NULL,
+                    PRIMARY KEY(`id`)
+                )
+                """.trimIndent()
+            )
+            database.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `feeds` (
+                    `id` TEXT NOT NULL,
+                    `identityId` TEXT NOT NULL,
+                    `title` TEXT NOT NULL,
+                    `url` TEXT NOT NULL,
+                    `lastItemTitle` TEXT,
+                    `lastItemUrl` TEXT,
+                    PRIMARY KEY(`id`)
+                )
+                """.trimIndent()
+            )
+        }
+    }
+
     @Provides
     @Singleton
     fun provideXonarDatabase(@ApplicationContext context: Context): XonarDatabase {
@@ -47,8 +79,8 @@ object DatabaseModule {
             XonarDatabase::class.java,
             "xonar_db"
         )
-        .addMigrations(MIGRATION_1_2)
-        .fallbackToDestructiveMigration()
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+        .fallbackToDestructiveMigration(false)
         .build()
     }
 
@@ -72,4 +104,10 @@ object DatabaseModule {
 
     @Provides
     fun provideNoteDao(db: XonarDatabase): NoteDao = db.noteDao()
+
+    @Provides
+    fun provideUserscriptDao(db: XonarDatabase): UserscriptDao = db.userscriptDao()
+
+    @Provides
+    fun provideFeedDao(db: XonarDatabase): FeedDao = db.feedDao()
 }
