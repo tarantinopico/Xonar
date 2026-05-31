@@ -9,6 +9,7 @@ import com.tarantino.xonarx.domain.usecase.DownloadManagerUseCase
 import com.tarantino.xonarx.domain.usecase.IdentityManager
 import com.tarantino.xonarx.domain.usecase.UrlHelper
 import com.tarantino.xonarx.presentation.browser.BrowserSessionManager
+import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -17,6 +18,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -111,15 +113,7 @@ class MainViewModelGroupTest {
             },
             urlHelper = UrlHelper(),
             settingsRepository = settingsRepo,
-            sessionManager = BrowserSessionManager(
-                ApplicationProvider.getApplicationContext(),
-                AdBlockerEngine(),
-                DownloadManagerUseCase(ApplicationProvider.getApplicationContext(), object : DownloadRepository {
-                    override fun observeDownloads(identityId: String) = flowOf(emptyList<DownloadItem>())
-                    override suspend fun addDownload(item: DownloadItem) {}
-                    override suspend fun removeDownload(item: DownloadItem) {}
-                })
-            )
+            sessionManager = mockk(relaxed = true)
         )
         
         collectJob = kotlinx.coroutines.CoroutineScope(testDispatcher).launch {
@@ -138,9 +132,9 @@ class MainViewModelGroupTest {
         val tab1 = Tab("t1", "1", "url", "tt", null, true, false, false, null, 0, 0, 0)
         tabRepo.addTab(tab1)
         
-        kotlinx.coroutines.delay(10)
+        advanceUntilIdle()
         viewModel.createTabGroup("My Group", 0xFF00FF, listOf("t1"))
-        kotlinx.coroutines.delay(10)
+        advanceUntilIdle()
         
         val state = viewModel.uiState.value
         assertEquals(1, state.tabGroups.size)
@@ -150,13 +144,13 @@ class MainViewModelGroupTest {
     
     @Test
     fun renameAndColorTabGroup_updatesGroup() = runTest {
-        kotlinx.coroutines.delay(10)
+        advanceUntilIdle()
         viewModel.createTabGroup("My Group", 0xFF00FF, emptyList())
-        kotlinx.coroutines.delay(10)
+        advanceUntilIdle()
         
         val groupId = viewModel.uiState.value.tabGroups[0].id
         viewModel.renameAndColorTabGroup(groupId, "New Name", 0x00FF00)
-        kotlinx.coroutines.delay(10)
+        advanceUntilIdle()
         
         val state = viewModel.uiState.value
         assertEquals("New Name", state.tabGroups[0].name)
@@ -165,15 +159,15 @@ class MainViewModelGroupTest {
     
     @Test
     fun toggleTabGroupExpanded_switchesState() = runTest {
-        kotlinx.coroutines.delay(10)
+        advanceUntilIdle()
         viewModel.createTabGroup("My Group", 0xFF00FF, emptyList())
-        kotlinx.coroutines.delay(10)
+        advanceUntilIdle()
         
         val groupId = viewModel.uiState.value.tabGroups[0].id
         val prevExpanded = viewModel.uiState.value.tabGroups[0].isExpanded
         
         viewModel.toggleTabGroupExpanded(groupId)
-        kotlinx.coroutines.delay(10)
+        advanceUntilIdle()
         
         val state = viewModel.uiState.value
         assertEquals(!prevExpanded, state.tabGroups[0].isExpanded)
@@ -183,15 +177,15 @@ class MainViewModelGroupTest {
     fun moveTabToGroup_changesGroupId() = runTest {
         val tab1 = Tab("t1", "1", "url", "tt", null, true, false, false, null, 0, 0, 0)
         tabRepo.addTab(tab1)
-        kotlinx.coroutines.delay(10)
+        advanceUntilIdle()
         
         viewModel.createTabGroup("G1", 0xFF00FF, emptyList())
-        kotlinx.coroutines.delay(10)
+        advanceUntilIdle()
         
         val groupId = viewModel.uiState.value.tabGroups[0].id
         
         viewModel.moveTabToGroup("t1", groupId)
-        kotlinx.coroutines.delay(10)
+        advanceUntilIdle()
         
         assertEquals(groupId, viewModel.uiState.value.tabs[0].groupId)
     }
