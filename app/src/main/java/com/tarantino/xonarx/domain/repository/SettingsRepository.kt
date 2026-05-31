@@ -29,7 +29,8 @@ data class AppPreferences(
     val dataSaverEnabled: Boolean = false,
     val hasCompletedOnboarding: Boolean = false,
     val ntpWidgets: List<String> = listOf("favorites", "recent_tabs", "quick_actions"),
-    val webNotificationsEnabled: Boolean = true
+    val webNotificationsEnabled: Boolean = true,
+    val defaultPageZoom: Int = 100
 )
 
 enum class ThemeMode { LIGHT, DARK, SYSTEM }
@@ -57,4 +58,5 @@ interface SettingsRepository {
     suspend fun completeOnboarding()
     suspend fun updateNtpWidgets(widgets: List<String>)
     suspend fun updateWebNotificationsEnabled(enabled: Boolean)
+    suspend fun updateDefaultPageZoom(zoom: Int)
 }

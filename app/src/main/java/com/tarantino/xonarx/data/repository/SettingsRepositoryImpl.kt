@@ -43,6 +43,7 @@ class SettingsRepositoryImpl @Inject constructor(
         val HAS_COMPLETED_ONBOARDING = booleanPreferencesKey("has_completed_onboarding")
         val NTP_WIDGETS = stringPreferencesKey("ntp_widgets")
         val WEB_NOTIFICATIONS = booleanPreferencesKey("web_notifications")
+        val DEFAULT_PAGE_ZOOM = intPreferencesKey("default_page_zoom")
     }
 
     override val preferences: Flow<AppPreferences> = context.dataStore.data.map { prefs ->
@@ -69,7 +70,8 @@ class SettingsRepositoryImpl @Inject constructor(
             dataSaverEnabled = prefs[Keys.DATA_SAVER] ?: false,
             hasCompletedOnboarding = prefs[Keys.HAS_COMPLETED_ONBOARDING] ?: false,
             ntpWidgets = ntpWidgetsList,
-            webNotificationsEnabled = prefs[Keys.WEB_NOTIFICATIONS] ?: true
+            webNotificationsEnabled = prefs[Keys.WEB_NOTIFICATIONS] ?: true,
+            defaultPageZoom = prefs[Keys.DEFAULT_PAGE_ZOOM] ?: 100
         )
     }
 
@@ -191,5 +193,9 @@ class SettingsRepositoryImpl @Inject constructor(
 
     override suspend fun updateWebNotificationsEnabled(enabled: Boolean) {
         context.dataStore.edit { prefs -> prefs[Keys.WEB_NOTIFICATIONS] = enabled }
+    }
+
+    override suspend fun updateDefaultPageZoom(zoom: Int) {
+        context.dataStore.edit { prefs -> prefs[Keys.DEFAULT_PAGE_ZOOM] = zoom }
     }
 }

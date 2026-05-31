@@ -32,6 +32,7 @@ import com.tarantino.xonarx.domain.repository.TabGroupRepository
 
 data class MainUiState(
     val activeIdentity: Identity? = null,
+    val identities: List<Identity> = emptyList(),
     val tabs: List<Tab> = emptyList(),
     val tabGroups: List<TabGroup> = emptyList(),
     val favorites: List<Bookmark> = emptyList(),
@@ -53,10 +54,13 @@ class MainViewModel @Inject constructor(
 ) : ViewModel() {
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val uiState: StateFlow<MainUiState> = identityManager.activeIdentity
-        .flatMapLatest { identity ->
+    val uiState: StateFlow<MainUiState> = combine(
+        identityManager.activeIdentity,
+        identityManager.allIdentities
+    ) { activeId, allIds -> activeId to allIds }
+        .flatMapLatest { (identity, allIdentities) ->
             if (identity == null) {
-                flowOf(MainUiState())
+                flowOf(MainUiState(identities = allIdentities))
             } else {
                 combine(
                     tabRepository.observeTabs(identity.id),
@@ -65,6 +69,7 @@ class MainViewModel @Inject constructor(
                 ) { tabs, groups, bookmarks ->
                     MainUiState(
                         activeIdentity = identity,
+                        identities = allIdentities,
                         tabs = tabs,
                         tabGroups = groups,
                         favorites = bookmarks.filter { it.isFavorite },
@@ -182,12 +187,13 @@ class MainViewModel @Inject constructor(
         }
     }
     
-    fun openTab(url: String, groupId: String? = null) {
+    fun openTab(url: String, groupId: String? = null, overrideIdentityId: String? = null) {
         val identity = uiState.value.activeIdentity ?: return
+        val targetIdentityId = overrideIdentityId ?: identity.id
         viewModelScope.launch {
             val newTab = Tab(
                 id = UUID.randomUUID().toString(),
-                identityId = identity.id,
+                identityId = targetIdentityId,
                 url = url,
                 title = "Loading...",
                 faviconUrl = null,
@@ -200,7 +206,12 @@ class MainViewModel @Inject constructor(
                 updatedAt = System.currentTimeMillis()
             )
             tabRepository.addTab(newTab)
-            tabRepository.activateTab(newTab.id, identity.id)
+            tabRepository.activateTab(newTab.id, targetIdentityId)
+            
+            // Switch to the target identity if it's different so we can actually see the tab
+            if (targetIdentityId != identity.id) {
+                identityManager.switchIdentity(targetIdentityId)
+            }
         }
     }
 

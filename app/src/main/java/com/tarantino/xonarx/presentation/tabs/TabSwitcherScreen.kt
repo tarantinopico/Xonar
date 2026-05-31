@@ -152,6 +152,25 @@ fun TabSwitcherScreen(
                                         }
                                     )
                                 }
+                                if (uiState.tabs.isNotEmpty()) {
+                                    DropdownMenuItem(
+                                        text = { Text("Close All Tabs") },
+                                        onClick = {
+                                            uiState.tabs.forEach { viewModel.closeTab(it) }
+                                            showMenu = false
+                                        }
+                                    )
+                                    val activeTabId = uiState.activeTab?.id
+                                    if (activeTabId != null && uiState.tabs.size > 1) {
+                                        DropdownMenuItem(
+                                            text = { Text("Close All Except Current") },
+                                            onClick = {
+                                                uiState.tabs.filter { it.id != activeTabId }.forEach { viewModel.closeTab(it) }
+                                                showMenu = false
+                                            }
+                                        )
+                                    }
+                                }
                             }
                             
                             IconButton(onClick = {

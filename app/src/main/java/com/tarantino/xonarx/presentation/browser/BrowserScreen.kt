@@ -60,13 +60,28 @@ fun BrowserScreen(
     var isEditingUrl by remember { mutableStateOf(false) }
     var menuExpanded by remember { mutableStateOf(false) }
     var showGroupDialog by remember { mutableStateOf(false) }
+    var showBackHistorySheet by remember { mutableStateOf(false) }
+    var showForwardHistorySheet by remember { mutableStateOf(false) }
+    var showIdentitySelector by remember { mutableStateOf(false) }
 
     val focusRequester = remember { FocusRequester() }
+
+    var suggestedClipboardUrl by remember { mutableStateOf<String?>(null) }
+    var hasCheckedClipboard by remember { mutableStateOf(false) }
+    
+    val context = androidx.compose.ui.platform.LocalContext.current
+
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
+        if (!hasCheckedClipboard) {
+            hasCheckedClipboard = true
+            val clipUrl = com.tarantino.xonarx.presentation.util.ClipboardHelper.getClipboardUrl(context)
+            if (clipUrl != null && clipUrl != uiState.activeTab?.url) {
+                suggestedClipboardUrl = clipUrl
+            }
+        }
     }
 
-    val context = androidx.compose.ui.platform.LocalContext.current
     val configuration = androidx.compose.ui.platform.LocalConfiguration.current
     val isPipMode = remember(configuration) {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
@@ -84,6 +99,13 @@ fun BrowserScreen(
         uiState.activeTab?.id?.let { activeTabId ->
             val session = browserViewModel.sessionManager.getOrCreateSession(activeTabId, uiState.activeTab?.identityId ?: "")
             session.webView?.setDataSaverEnabled(preferences.dataSaverEnabled)
+        }
+    }
+
+    LaunchedEffect(preferences.defaultPageZoom, uiState.activeTab?.id) {
+        uiState.activeTab?.id?.let { activeTabId ->
+            val session = browserViewModel.sessionManager.getOrCreateSession(activeTabId, uiState.activeTab?.identityId ?: "")
+            session.webView?.settings?.textZoom = preferences.defaultPageZoom
         }
     }
 
@@ -259,93 +281,55 @@ fun BrowserScreen(
         },
         bottomBar = {
             if (preferences.bottomControls && !isPipMode) {
-                BrowserTopBar(
-                    uiState = uiState,
-                    isEditingUrl = isEditingUrl,
-                    onUrlEditStateChange = { isEditingUrl = it },
-                    onNavigate = { url -> 
-                        if (url.startsWith("xonar://")) {
-                            when(url) {
-                                "xonar://settings" -> onNavigateToSettings()
-                                "xonar://history" -> onNavigateToHistory()
-                                "xonar://bookmarks" -> onNavigateToBookmarks()
-                                "xonar://downloads" -> onNavigateToDownloads()
-                                "xonar://notes" -> onNavigateToNotes()
-                                "xonar://feeds" -> onNavigateToFeeds()
-                            }
-                        } else {
-                            viewModel.navigate(url) 
+                val activeWebView = uiState.activeTab?.id?.let { browserViewModel.sessionManager.getWebView(it) }
+                val canGoBack = activeWebView?.canGoBack() == true
+                val canGoForward = activeWebView?.canGoForward() == true
+                
+                BrowserBottomToolbar(
+                    canGoBack = canGoBack,
+                    canGoForward = canGoForward,
+                    tabCount = uiState.tabs.size,
+                    onBackClick = {
+                        if (canGoBack) activeWebView?.goBack()
+                    },
+                    onBackLongClick = {
+                        if (canGoBack) {
+                            com.tarantino.xonarx.presentation.util.HapticFeedbackHelper.performLightHaptic(context, preferences.hapticFeedbackEnabled)
+                            showBackHistorySheet = true
                         }
                     },
-                    onSearchQueryChange = { query -> 
-                        uiState.activeIdentity?.let { identity -> 
-                            browserViewModel.updateSearchQuery(query, identity.id) 
-                        } 
+                    onForwardClick = {
+                        if (canGoForward) activeWebView?.goForward()
                     },
-                    onMenuClick = { menuExpanded = true },
+                    onForwardLongClick = {
+                        if (canGoForward) {
+                            com.tarantino.xonarx.presentation.util.HapticFeedbackHelper.performLightHaptic(context, preferences.hapticFeedbackEnabled)
+                            showForwardHistorySheet = true
+                        }
+                    },
+                    onHomeClick = {
+                        uiState.activeTab?.let {
+                            viewModel.navigate("about:blank")
+                        }
+                    },
+                    onSearchClick = {
+                        com.tarantino.xonarx.presentation.util.HapticFeedbackHelper.performLightHaptic(context, preferences.hapticFeedbackEnabled)
+                        isEditingUrl = true
+                    },
                     onTabCountClick = {
                         uiState.activeTab?.let { activeTab ->
                             browserViewModel.capturePreviewForTab(activeTab.id, activeTab.identityId)
                         }
                         onNavigateToTabSwitcher()
                     },
-                    onSwipeLeft = { viewModel.switchNextIdentity() },
-                    onSwipeRight = { viewModel.switchPreviousIdentity() },
-                    menuContent = {
-                        // ... menu ...
-                        if (menuExpanded) {
-                            val context = androidx.compose.ui.platform.LocalContext.current
-                            BrowserMenu(
-                                expanded = menuExpanded,
-                                onDismiss = { menuExpanded = false },
-                                onNavigateToIdentityManager = onNavigateToIdentityManager,
-                                onNavigateToSettings = onNavigateToSettings,
-                                onNavigateToHistory = onNavigateToHistory,
-                                onNavigateToBookmarks = onNavigateToBookmarks,
-                                onNavigateToDownloads = onNavigateToDownloads,
-                                onNavigateToNotes = onNavigateToNotes,
-                                onNavigateToPrivacyStats = onNavigateToPrivacyStats,
-                                onAddToFavoritesClick = { viewModel.addToFavorites() },
-                                onAddToGroupClick = { showGroupDialog = true },
-                                onNavigateForward = {
-                                    uiState.activeTab?.let { activeTab ->
-                                        val session = browserViewModel.sessionManager.getOrCreateSession(activeTab.id, activeTab.identityId)
-                                        session.webView?.goForward()
-                                    }
-                                },
-                                onScanQrClick = {
-                                    browserViewModel.startQrScan { result ->
-                                        viewModel.navigate(result)
-                                    }
-                                },
-                                onPrintPdfClick = {
-                                    uiState.activeTab?.let { activeTab ->
-                                        val session = browserViewModel.sessionManager.getOrCreateSession(activeTab.id, activeTab.identityId)
-                                        val wv = session.webView
-                                        if (wv != null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                                            val printManager = context.getSystemService(android.content.Context.PRINT_SERVICE) as? android.print.PrintManager
-                                            val printAdapter = wv.createPrintDocumentAdapter("Xonar_${activeTab.title}")
-                                            val printAttributes = android.print.PrintAttributes.Builder()
-                                                .setMediaSize(android.print.PrintAttributes.MediaSize.ISO_A4)
-                                                .build()
-                                            printManager?.print("Xonar Document", printAdapter, printAttributes)
-                                        }
-                                    }
-                                },
-                                onEnterPipClick = {
-                                    val activity = context as? android.app.Activity
-                                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                                        val params = android.app.PictureInPictureParams.Builder()
-                                            .build()
-                                        try {
-                                            activity?.enterPictureInPictureMode(params)
-                                        } catch (e: Exception) {
-                                            e.printStackTrace()
-                                        }
-                                    }
-                                }
-                            )
+                    onNewTabClick = {
+                        uiState.activeIdentity?.let {
+                            viewModel.openTab("about:blank", null)
                         }
+                    },
+                    onNewTabLongClick = {
+                        com.tarantino.xonarx.presentation.util.HapticFeedbackHelper.performLightHaptic(context, preferences.hapticFeedbackEnabled)
+                        showIdentitySelector = true
                     }
                 )
             }
@@ -458,6 +442,113 @@ fun BrowserScreen(
                     onAddTab = { viewModel.openTab("about:blank", activeGroup.id) },
                     modifier = Modifier.align(Alignment.BottomCenter)
                 )
+            }
+            
+            // Clipboard Suggestion Banner
+            AnimatedVisibility(
+                visible = suggestedClipboardUrl != null,
+                enter = expandVertically(expandFrom = Alignment.Top),
+                exit = shrinkVertically(shrinkTowards = Alignment.Top),
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 16.dp, start = 16.dp, end = 16.dp)
+            ) {
+                if (suggestedClipboardUrl != null) {
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        tonalElevation = 6.dp,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .clickable {
+                                    suggestedClipboardUrl?.let { url ->
+                                        viewModel.navigate(url)
+                                    }
+                                    suggestedClipboardUrl = null
+                                }
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.ContentPaste, contentDescription = "Clipboard", tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                            Spacer(Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Link copied to clipboard", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f))
+                                Text(suggestedClipboardUrl!!, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSecondaryContainer, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                            }
+                            IconButton(onClick = { suggestedClipboardUrl = null }, modifier = Modifier.size(24.dp)) {
+                                Icon(Icons.Default.Close, contentDescription = "Dismiss", modifier = Modifier.size(16.dp))
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Sheets
+            val activeWebView = activeTab?.id?.let { browserViewModel.sessionManager.getWebView(it) }
+            val backForwardList = activeWebView?.copyBackForwardList()
+            if (showBackHistorySheet && backForwardList != null) {
+                BrowserHistorySheet(
+                    title = "Back History",
+                    historyList = backForwardList,
+                    currentIndex = backForwardList.currentIndex,
+                    isForward = false,
+                    onNavigateToIndex = { idx ->
+                        val step = idx - backForwardList.currentIndex
+                        activeWebView.goBackOrForward(step)
+                        showBackHistorySheet = false
+                    },
+                    onDismissRequest = { showBackHistorySheet = false }
+                )
+            }
+            if (showForwardHistorySheet && backForwardList != null) {
+                BrowserHistorySheet(
+                    title = "Forward History",
+                    historyList = backForwardList,
+                    currentIndex = backForwardList.currentIndex,
+                    isForward = true,
+                    onNavigateToIndex = { idx ->
+                        val step = idx - backForwardList.currentIndex
+                        activeWebView.goBackOrForward(step)
+                        showForwardHistorySheet = false
+                    },
+                    onDismissRequest = { showForwardHistorySheet = false }
+                )
+            }
+            
+            if (showIdentitySelector) {
+                ModalBottomSheet(onDismissRequest = { showIdentitySelector = false }) {
+                    Column(Modifier.padding(bottom = 32.dp)) {
+                        Text(
+                            text = "New Tab in Identity",
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
+                        )
+                        HorizontalDivider()
+                        uiState.identities.forEach { identity ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        viewModel.openTab("about:blank", null, identity.id)
+                                        showIdentitySelector = false
+                                    }
+                                    .padding(horizontal = 24.dp, vertical = 16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(16.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(identity.color))
+                                )
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Text(text = identity.displayName, style = MaterialTheme.typography.bodyLarge)
+                            }
+                        }
+                    }
+                }
             }
         }
     }
