@@ -34,11 +34,17 @@ import androidx.fragment.app.FragmentActivity
 import androidx.compose.ui.platform.LocalContext
 import com.tarantino.xonarx.domain.usecase.BiometricAuthManager
 import androidx.compose.material.icons.filled.Lock
+import com.tarantino.xonarx.presentation.browser.BrowserSessionManager
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 
+/**
+ * ViewModel managing identities and their authentication locks.
+ */
 @HiltViewModel
 class IdentityViewModel @Inject constructor(
     private val identityManager: IdentityManager,
-    private val biometricAuthManager: BiometricAuthManager
+    private val biometricAuthManager: BiometricAuthManager,
+    private val sessionManager: BrowserSessionManager
 ) : ViewModel() {
     val identities: StateFlow<List<Identity>> = identityManager.allIdentities
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -73,6 +79,7 @@ class IdentityViewModel @Inject constructor(
     fun deleteIdentity(identity: Identity) {
         viewModelScope.launch {
             identityManager.deleteIdentity(identity)
+            sessionManager.clearIdentitySessions(identity.id)
         }
     }
 
@@ -101,7 +108,7 @@ fun IdentityScreen(
                 title = { Text("Identities") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
             )

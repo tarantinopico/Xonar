@@ -19,6 +19,8 @@ import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
 
+import com.tarantino.xonarx.presentation.browser.BrowserSessionManager
+
 data class MainUiState(
     val activeIdentity: Identity? = null,
     val tabs: List<Tab> = emptyList(),
@@ -35,7 +37,8 @@ class MainViewModel @Inject constructor(
     private val bookmarkRepository: BookmarkRepository,
     private val historyRepository: HistoryRepository,
     private val urlHelper: UrlHelper,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val sessionManager: BrowserSessionManager
 ) : ViewModel() {
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -191,6 +194,7 @@ class MainViewModel @Inject constructor(
     fun closeTab(tab: Tab) {
         viewModelScope.launch {
             tabRepository.removeTab(tab)
+            sessionManager.removeSession(tab.id)
             val currentState = uiState.value
             val remain = currentState.tabs.filter { it.id != tab.id }
             if (tab.isActive && remain.isNotEmpty()) {

@@ -14,6 +14,12 @@ data class TabSession(
     var previewBitmap: Bitmap? = null
 )
 
+/**
+ * Manages the lifecycle and caching of WebView sessions and their preview bitmaps.
+ *
+ * This class ensures that memory leaks are prevented by explicitly destroying WebViews
+ * and recycling bitmaps when tabs are closed or identities are cleared.
+ */
 class BrowserSessionManager(
     private val applicationContext: Context,
     private val adBlockerEngine: AdBlockerEngine,

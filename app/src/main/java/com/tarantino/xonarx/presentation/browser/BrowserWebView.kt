@@ -14,6 +14,13 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import com.tarantino.xonarx.domain.usecase.AdBlockerEngine
 
+/**
+ * A custom WebView tailored for Xonar identity isolation and browser functions.
+ * 
+ * Note: Horizontal swipe gestures (fling) have been removed from the WebView level 
+ * to prevent conflicts with standard web page horizontal scrolling. Users should rely 
+ * on system back gestures for navigation.
+ */
 class BrowserWebView(
     context: Context,
     private val adBlockerEngine: AdBlockerEngine,
@@ -41,39 +48,6 @@ class BrowserWebView(
         } catch (e: Exception) {
             null
         }
-    }
-
-    private val gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
-        private val SWIPE_THRESHOLD = 200
-        private val SWIPE_VELOCITY_THRESHOLD = 200
-
-        override fun onFling(
-            e1: MotionEvent?,
-            e2: MotionEvent,
-            velocityX: Float,
-            velocityY: Float
-        ): Boolean {
-            if (e1 != null) {
-                val diffX = e2.x - e1.x
-                val diffY = e2.y - e1.y
-                if (Math.abs(diffX) > Math.abs(diffY) && 
-                    Math.abs(diffX) > SWIPE_THRESHOLD && 
-                    Math.abs(velocityX) > SWIPE_VELOCITY_THRESHOLD) {
-                    if (diffX > 0) {
-                        if (canGoBack()) goBack()
-                    } else {
-                        if (canGoForward()) goForward()
-                    }
-                    return true
-                }
-            }
-            return super.onFling(e1, e2, velocityX, velocityY)
-        }
-    })
-
-    override fun onTouchEvent(event: MotionEvent): Boolean {
-        gestureDetector.onTouchEvent(event)
-        return super.onTouchEvent(event)
     }
 
     init {

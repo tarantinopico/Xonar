@@ -71,7 +71,28 @@ fun BrowserScreen(
                     onNavigateToTabSwitcher()
                 },
                 onSwipeLeft = { viewModel.switchNextIdentity() },
-                onSwipeRight = { viewModel.switchPreviousIdentity() }
+                onSwipeRight = { viewModel.switchPreviousIdentity() },
+                menuContent = {
+                    if (menuExpanded) {
+                        BrowserMenu(
+                            expanded = menuExpanded,
+                            onDismiss = { menuExpanded = false },
+                            onNavigateToIdentityManager = onNavigateToIdentityManager,
+                            onNavigateToSettings = onNavigateToSettings,
+                            onNavigateToHistory = onNavigateToHistory,
+                            onNavigateToBookmarks = onNavigateToBookmarks,
+                            onNavigateToDownloads = onNavigateToDownloads,
+                            onNavigateToNotes = onNavigateToNotes,
+                            onAddToFavoritesClick = { viewModel.addToFavorites() },
+                            onNavigateForward = {
+                                uiState.activeTab?.let { activeTab ->
+                                    val session = browserViewModel.sessionManager.getOrCreateSession(activeTab.id, activeTab.identityId)
+                                    session.webView?.goForward()
+                                }
+                            }
+                        )
+                    }
+                }
             )
         }
     ) { paddingValues ->
@@ -98,21 +119,7 @@ fun BrowserScreen(
                 )
             }
 
-            if (menuExpanded) {
-                BrowserMenu(
-                    expanded = menuExpanded,
-                    onDismiss = { menuExpanded = false },
-                    onNavigateToIdentityManager = onNavigateToIdentityManager,
-                    onNavigateToSettings = onNavigateToSettings,
-                    onNavigateToHistory = onNavigateToHistory,
-                    onNavigateToBookmarks = onNavigateToBookmarks,
-                    onNavigateToDownloads = onNavigateToDownloads,
-                    onNavigateToNotes = onNavigateToNotes,
-                    onAddToFavoritesClick = { viewModel.addToFavorites() }
-                )
-            }
-            
-            // Render Suggestions if editing
+
             AnimatedVisibility(
                 visible = isEditingUrl,
                 enter = expandVertically(expandFrom = Alignment.Top),
@@ -125,25 +132,34 @@ fun BrowserScreen(
                     shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp)
                 ) {
                     Column(
-                        modifier = Modifier.padding(16.dp)
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 12.dp)
                     ) {
-                        Text("Search Suggestions", style = MaterialTheme.typography.labelMedium)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        if (suggestions.isEmpty()) {
-                            Text("No suggestions available", modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        } else {
+                        if (suggestions.isNotEmpty()) {
+                            Text("Suggestions", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(modifier = Modifier.height(4.dp))
                             suggestions.forEach { url ->
-                                Text(
-                                    text = url,
+                                Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clickable {
                                             viewModel.navigate(url)
                                             isEditingUrl = false
                                         }
-                                        .padding(vertical = 12.dp)
-                                )
+                                        .padding(vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(
+                                        text = url,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        maxLines = 1,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
                             }
+                        } else {
+                            Text("No suggestions available", modifier = Modifier.padding(vertical = 8.dp), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -240,7 +256,8 @@ fun BrowserTopBar(
     onMenuClick: () -> Unit,
     onTabCountClick: () -> Unit,
     onSwipeLeft: () -> Unit,
-    onSwipeRight: () -> Unit
+    onSwipeRight: () -> Unit,
+    menuContent: @Composable () -> Unit
 ) {
     val tabCount = uiState.tabs.size
     val currentUrl = uiState.activeTab?.url ?: ""
@@ -294,8 +311,11 @@ fun BrowserTopBar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (!isEditingUrl) {
-                IconButton(onClick = onMenuClick) {
-                    Icon(Icons.Default.MoreVert, contentDescription = "Menu")
+                Box {
+                    IconButton(onClick = onMenuClick) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "Menu")
+                    }
+                    menuContent()
                 }
             } else {
                 IconButton(onClick = { onUrlEditStateChange(false) }) {
@@ -376,12 +396,21 @@ fun BrowserMenu(
     onNavigateToBookmarks: () -> Unit,
     onNavigateToDownloads: () -> Unit,
     onNavigateToNotes: () -> Unit,
-    onAddToFavoritesClick: () -> Unit
+    onAddToFavoritesClick: () -> Unit,
+    onNavigateForward: () -> Unit
 ) {
     DropdownMenu(
         expanded = expanded,
         onDismissRequest = onDismiss
     ) {
+        DropdownMenuItem(
+            text = { Text("Forward") },
+            onClick = {
+                onNavigateForward()
+                onDismiss()
+            },
+            leadingIcon = { Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null) }
+        )
         DropdownMenuItem(
             text = { Text("Add to Favorites") },
             onClick = {
