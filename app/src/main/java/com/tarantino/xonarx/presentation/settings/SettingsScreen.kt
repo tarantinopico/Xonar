@@ -1,15 +1,14 @@
 package com.tarantino.xonarx.presentation.settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -76,6 +75,33 @@ class SettingsViewModel @Inject constructor(
             settingsRepository.updateSearchEngine(url)
         }
     }
+
+    // New preferences
+    fun toggleBottomControls(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateBottomControls(enabled)
+        }
+    }
+    fun toggleEdgeSwipeToClose(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateEdgeSwipeToClose(enabled)
+        }
+    }
+    fun toggleDoubleTapQuickSwitch(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateDoubleTapQuickSwitch(enabled)
+        }
+    }
+    fun toggleReachability(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateReachabilityEnabled(enabled)
+        }
+    }
+    fun toggleHapticFeedback(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateHapticFeedbackEnabled(enabled)
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -116,7 +142,15 @@ fun SettingsScreen(
                 ListItem(
                     headlineContent = { Text("Theme Mode") },
                     supportingContent = { Text(prefs.themeMode.name) },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().clickable {
+                        // For the future: Add Theme mode selector
+                        val newMode = when (prefs.themeMode) {
+                            ThemeMode.LIGHT -> ThemeMode.DARK
+                            ThemeMode.DARK -> ThemeMode.SYSTEM
+                            ThemeMode.SYSTEM -> ThemeMode.LIGHT
+                        }
+                        viewModel.updateTheme(newMode)
+                    }
                 )
             }
             item {
@@ -133,7 +167,7 @@ fun SettingsScreen(
             item {
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                 Text(
-                    text = "Browser Settings",
+                    text = "Browser Navigation",
                     color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.labelLarge,
                     modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp)
@@ -141,14 +175,71 @@ fun SettingsScreen(
             }
             item {
                 ListItem(
-                    headlineContent = { Text("Enable Gestures") },
-                    supportingContent = { Text("Swipe to navigate backward/forward") },
+                    headlineContent = { Text("Bottom Controls") },
+                    supportingContent = { Text("Move toolbar and omnibox to the bottom") },
                     trailingContent = {
                         Switch(
-                            checked = prefs.gesturesEnabled,
-                            onCheckedChange = { viewModel.toggleGestures(it) }
+                            checked = prefs.bottomControls,
+                            onCheckedChange = { viewModel.toggleBottomControls(it) }
                         )
                     }
+                )
+            }
+            item {
+                ListItem(
+                    headlineContent = { Text("Edge swipe to close tab") },
+                    supportingContent = { Text("Swipe inward from edges to close the current tab") },
+                    trailingContent = {
+                        Switch(
+                            checked = prefs.edgeSwipeToClose,
+                            onCheckedChange = { viewModel.toggleEdgeSwipeToClose(it) }
+                        )
+                    }
+                )
+            }
+            item {
+                ListItem(
+                    headlineContent = { Text("Double tap to quick switch") },
+                    supportingContent = { Text("Double tap the toolbar to switch to previous tab") },
+                    trailingContent = {
+                        Switch(
+                            checked = prefs.doubleTapQuickSwitch,
+                            onCheckedChange = { viewModel.toggleDoubleTapQuickSwitch(it) }
+                        )
+                    }
+                )
+            }
+             item {
+                ListItem(
+                    headlineContent = { Text("Reachability (One-handed mode)") },
+                    supportingContent = { Text("Swipe down on toolbar to lower the screen") },
+                    trailingContent = {
+                        Switch(
+                            checked = prefs.reachabilityEnabled,
+                            onCheckedChange = { viewModel.toggleReachability(it) }
+                        )
+                    }
+                )
+            }
+            item {
+                ListItem(
+                    headlineContent = { Text("Haptic Feedback") },
+                    supportingContent = { Text("Vibrate on key interactions") },
+                    trailingContent = {
+                        Switch(
+                            checked = prefs.hapticFeedbackEnabled,
+                            onCheckedChange = { viewModel.toggleHapticFeedback(it) }
+                        )
+                    }
+                )
+            }
+            item {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                Text(
+                    text = "Search",
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp)
                 )
             }
             item {

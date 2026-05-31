@@ -42,4 +42,14 @@ class UrlHelper @Inject constructor() {
     fun createSearchUrl(query: String, searchEngineUrl: String = "https://www.google.com/search?q="): String {
         return "$searchEngineUrl${URLEncoder.encode(query, "UTF-8")}"
     }
+
+    fun getDomainName(url: String): String {
+        return try {
+            val uri = Uri.parse(url)
+            val host = uri.host ?: return ""
+            if (host.startsWith("www.")) host.substring(4) else host
+        } catch (e: Exception) {
+            ""
+        }
+    }
 }

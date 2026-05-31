@@ -209,21 +209,17 @@ class MainViewModel @Inject constructor(
             tabRepository.removeTab(tab)
             sessionManager.removeSession(tab.id)
             
-            val previousGroupId = tab.groupId
-            if (previousGroupId != null) {
-                val tabsInPrevGroup = uiState.value.tabs.count { it.groupId == previousGroupId }
-                if (tabsInPrevGroup <= 2) { 
-                    tabGroupRepository.ungroupTabs(previousGroupId)
-                    uiState.value.tabGroups.find { it.id == previousGroupId }?.let {
-                        tabGroupRepository.removeGroup(it)
-                    }
-                }
-            }
-
+            // Do NOT auto delete group
+            // Empty groups are now persisted.
+            
             val currentState = uiState.value
             val remain = currentState.tabs.filter { it.id != tab.id }
             if (tab.isActive && remain.isNotEmpty()) {
                 tabRepository.activateTab(remain.last().id, tab.identityId)
+            } else if (tab.isActive && remain.isEmpty()) {
+                // If it was active and no tabs remain, we should probably open a new blank tab
+                // or just leave it empty. Let's open a new tab so the browser doesn't break.
+                openTab("about:blank")
             }
         }
     }
@@ -240,10 +236,24 @@ class MainViewModel @Inject constructor(
         val identity = uiState.value.activeIdentity ?: return
         viewModelScope.launch {
             val groupId = UUID.randomUUID().toString()
+            var groupName = name
+            
+            if (groupName.isBlank() && initialTabIds.isNotEmpty()) {
+                val firstTab = uiState.value.tabs.find { it.id == initialTabIds.first() }
+                if (firstTab != null) {
+                    val domain = urlHelper.getDomainName(firstTab.url)
+                    groupName = if (domain.isNotBlank()) domain.capitalize() else "New Group"
+                } else {
+                    groupName = "New Group"
+                }
+            } else if (groupName.isBlank()) {
+                groupName = "New Group"
+            }
+
             val newGroup = TabGroup(
                 id = groupId,
                 identityId = identity.id,
-                name = name,
+                name = groupName,
                 color = color,
                 isExpanded = true,
                 orderIndex = System.currentTimeMillis().toInt(),
@@ -291,21 +301,7 @@ class MainViewModel @Inject constructor(
         if (tab.groupId == groupId) return
         viewModelScope.launch {
             tabRepository.updateTab(tab.copy(groupId = groupId))
-            
-            // Auto dissolve group if 1 or 0 tabs left
-            val previousGroupId = tab.groupId
-            if (previousGroupId != null) {
-                val tabsInPrevGroup = uiState.value.tabs.count { it.groupId == previousGroupId }
-                if (tabsInPrevGroup <= 2) { // By the time this runs it will be 1
-                    val remain = uiState.value.tabs.filter { it.groupId == previousGroupId && it.id != tabId }
-                    if (remain.size <= 1) {
-                        tabGroupRepository.ungroupTabs(previousGroupId)
-                        uiState.value.tabGroups.find { it.id == previousGroupId }?.let {
-                            tabGroupRepository.removeGroup(it)
-                        }
-                    }
-                }
-            }
+            // Empty groups are now persisted. Do NOT auto dissolve.
         }
     }
 

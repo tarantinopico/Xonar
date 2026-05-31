@@ -77,7 +77,9 @@ fun TabSwitcherScreen(
     showColorDialogForGroup?.let { group ->
         val colors = listOf(
             0xFF1976D2.toInt(), 0xFF388E3C.toInt(), 0xFFD32F2F.toInt(),
-            0xFFFBC02D.toInt(), 0xFF7B1FA2.toInt(), 0xFFE64A19.toInt()
+            0xFFFBC02D.toInt(), 0xFF7B1FA2.toInt(), 0xFFE64A19.toInt(),
+            0xFF0097A7.toInt(), 0xFF689F38.toInt(), 0xFFF57C00.toInt(),
+            0xFF5D4037.toInt(), 0xFFC2185B.toInt(), 0xFF455A64.toInt()
         )
         AlertDialog(
             onDismissRequest = { showColorDialogForGroup = null },

@@ -2,6 +2,12 @@ package com.tarantino.xonarx.domain.repository
 
 import kotlinx.coroutines.flow.Flow
 
+data class CustomSearchEngine(
+    val id: String,
+    val name: String,
+    val urlTemplate: String
+)
+
 data class AppPreferences(
     val lastActiveIdentityId: String? = null,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
@@ -9,7 +15,15 @@ data class AppPreferences(
     val gesturesEnabled: Boolean = true,
     val searchEngineUrl: String = "https://www.google.com/search?q=",
     val biometricsEnabled: Boolean = true,
-    val autoClearOnExit: Boolean = false
+    val autoClearOnExit: Boolean = false,
+    
+    // New features
+    val bottomControls: Boolean = false,
+    val edgeSwipeToClose: Boolean = false,
+    val doubleTapQuickSwitch: Boolean = true,
+    val reachabilityEnabled: Boolean = true,
+    val hapticFeedbackEnabled: Boolean = true,
+    val customSearchEngines: List<CustomSearchEngine> = emptyList()
 )
 
 enum class ThemeMode { LIGHT, DARK, SYSTEM }
@@ -23,4 +37,13 @@ interface SettingsRepository {
     suspend fun updateSearchEngine(url: String)
     suspend fun updateBiometricsEnabled(enabled: Boolean)
     suspend fun updateAutoClearOnExit(enabled: Boolean)
+    
+    // New Feature updates
+    suspend fun updateBottomControls(enabled: Boolean)
+    suspend fun updateEdgeSwipeToClose(enabled: Boolean)
+    suspend fun updateDoubleTapQuickSwitch(enabled: Boolean)
+    suspend fun updateReachabilityEnabled(enabled: Boolean)
+    suspend fun updateHapticFeedbackEnabled(enabled: Boolean)
+    suspend fun addCustomSearchEngine(engine: CustomSearchEngine)
+    suspend fun removeCustomSearchEngine(id: String)
 }

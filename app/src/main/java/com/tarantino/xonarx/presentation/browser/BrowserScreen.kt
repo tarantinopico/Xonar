@@ -45,12 +45,50 @@ fun BrowserScreen(
     onNavigateToHistory: () -> Unit,
     onNavigateToBookmarks: () -> Unit,
     onNavigateToDownloads: () -> Unit,
-    onNavigateToNotes: () -> Unit
+    onNavigateToNotes: () -> Unit,
+    onNavigateToPrivacyStats: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val suggestions by browserViewModel.suggestions.collectAsState()
     var isEditingUrl by remember { mutableStateOf(false) }
     var menuExpanded by remember { mutableStateOf(false) }
+    var showGroupDialog by remember { mutableStateOf(false) }
+
+    if (showGroupDialog) {
+        val activeIdentityId = uiState.activeIdentity?.id
+        val availableGroups = uiState.tabGroups.filter { it.identityId == activeIdentityId }
+        AlertDialog(
+            onDismissRequest = { showGroupDialog = false },
+            title = { Text("Add to Group") },
+            text = {
+                Column {
+                    if (availableGroups.isEmpty()) {
+                        Text("No groups available.")
+                    } else {
+                        availableGroups.forEach { group ->
+                            Text(
+                                text = group.name,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        uiState.activeTab?.let { tab ->
+                                            viewModel.moveTabToGroup(tab.id, group.id)
+                                        }
+                                        showGroupDialog = false
+                                    }
+                                    .padding(vertical = 12.dp)
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showGroupDialog = false }) {
+                    Text("Close")
+                }
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -75,6 +113,7 @@ fun BrowserScreen(
                 onSwipeRight = { viewModel.switchPreviousIdentity() },
                 menuContent = {
                     if (menuExpanded) {
+                        val context = androidx.compose.ui.platform.LocalContext.current
                         BrowserMenu(
                             expanded = menuExpanded,
                             onDismiss = { menuExpanded = false },
@@ -84,11 +123,45 @@ fun BrowserScreen(
                             onNavigateToBookmarks = onNavigateToBookmarks,
                             onNavigateToDownloads = onNavigateToDownloads,
                             onNavigateToNotes = onNavigateToNotes,
+                            onNavigateToPrivacyStats = onNavigateToPrivacyStats,
                             onAddToFavoritesClick = { viewModel.addToFavorites() },
+                            onAddToGroupClick = { showGroupDialog = true },
                             onNavigateForward = {
                                 uiState.activeTab?.let { activeTab ->
                                     val session = browserViewModel.sessionManager.getOrCreateSession(activeTab.id, activeTab.identityId)
                                     session.webView?.goForward()
+                                }
+                            },
+                            onScanQrClick = {
+                                browserViewModel.startQrScan { result ->
+                                    viewModel.navigate(result)
+                                }
+                            },
+                            onEnterPipClick = {
+                                val activity = context as? android.app.Activity
+                                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                                    val params = android.app.PictureInPictureParams.Builder()
+                                        // A real app would set aspect ratio based on video size here
+                                        .build()
+                                    try {
+                                        activity?.enterPictureInPictureMode(params)
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                    }
+                                }
+                            },
+                            onPrintPdfClick = {
+                                uiState.activeTab?.let { activeTab ->
+                                    val session = browserViewModel.sessionManager.getOrCreateSession(activeTab.id, activeTab.identityId)
+                                    val wv = session.webView
+                                    if (wv != null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                                        val printManager = context.getSystemService(android.content.Context.PRINT_SERVICE) as? android.print.PrintManager
+                                        val printAdapter = wv.createPrintDocumentAdapter("Xonar_${activeTab.title}")
+                                        val printAttributes = android.print.PrintAttributes.Builder()
+                                            .setMediaSize(android.print.PrintAttributes.MediaSize.ISO_A4)
+                                            .build()
+                                        printManager?.print("Xonar Document", printAdapter, printAttributes)
+                                    }
                                 }
                             }
                         )
@@ -474,8 +547,13 @@ fun BrowserMenu(
     onNavigateToBookmarks: () -> Unit,
     onNavigateToDownloads: () -> Unit,
     onNavigateToNotes: () -> Unit,
+    onNavigateToPrivacyStats: () -> Unit,
     onAddToFavoritesClick: () -> Unit,
-    onNavigateForward: () -> Unit
+    onAddToGroupClick: () -> Unit,
+    onNavigateForward: () -> Unit,
+    onScanQrClick: () -> Unit,
+    onPrintPdfClick: () -> Unit,
+    onEnterPipClick: () -> Unit
 ) {
     DropdownMenu(
         expanded = expanded,
@@ -497,6 +575,39 @@ fun BrowserMenu(
             },
             leadingIcon = { Icon(Icons.Default.Star, contentDescription = null) }
         )
+        DropdownMenuItem(
+            text = { Text("Add to Group") },
+            onClick = {
+                onAddToGroupClick()
+                onDismiss()
+            },
+            leadingIcon = { Icon(Icons.Default.Folder, contentDescription = null) }
+        )
+        DropdownMenuItem(
+            text = { Text("Scan QR Code") },
+            onClick = {
+                onScanQrClick()
+                onDismiss()
+            },
+            leadingIcon = { Icon(Icons.Default.QrCodeScanner, contentDescription = null) }
+        )
+        DropdownMenuItem(
+            text = { Text("Picture-in-Picture") },
+            onClick = {
+                onEnterPipClick()
+                onDismiss()
+            },
+            leadingIcon = { Icon(Icons.Default.PictureInPictureAlt, contentDescription = null) }
+        )
+        DropdownMenuItem(
+            text = { Text("Save as PDF") },
+            onClick = {
+                onPrintPdfClick()
+                onDismiss()
+            },
+            leadingIcon = { Icon(Icons.Default.PictureAsPdf, contentDescription = null) }
+        )
+        HorizontalDivider()
         DropdownMenuItem(
             text = { Text("Identities") },
             onClick = {
@@ -536,6 +647,14 @@ fun BrowserMenu(
                 onDismiss()
             },
             leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
+        )
+        DropdownMenuItem(
+            text = { Text("Privacy Stats") },
+            onClick = {
+                onNavigateToPrivacyStats()
+                onDismiss()
+            },
+            leadingIcon = { Icon(Icons.Default.Security, contentDescription = null) }
         )
         HorizontalDivider()
         DropdownMenuItem(

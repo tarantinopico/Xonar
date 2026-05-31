@@ -5,6 +5,7 @@ import android.webkit.WebResourceResponse
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import java.io.ByteArrayInputStream
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -14,6 +15,9 @@ class AdBlockerEngine @Inject constructor() {
     private val _isBlockingEnabled = MutableStateFlow(true)
     val isBlockingEnabled: StateFlow<Boolean> = _isBlockingEnabled.asStateFlow()
 
+    private val _blockedAdsCount = MutableStateFlow(0)
+    val blockedAdsCount: StateFlow<Int> = _blockedAdsCount.asStateFlow()
+
     // Simplified blocking list for demonstration
     private val blockedDomains = setOf(
         "doubleclick.net",
@@ -21,11 +25,16 @@ class AdBlockerEngine @Inject constructor() {
         "ad.doubleclick.net",
         "googlesyndication.com",
         "ads.twitter.com",
-        "connect.facebook.net"
+        "connect.facebook.net",
+        "facebook.com"
     )
 
     fun setBlockingEnabled(enabled: Boolean) {
         _isBlockingEnabled.value = enabled
+    }
+
+    fun resetStats() {
+        _blockedAdsCount.update { 0 }
     }
 
     fun shouldBlock(uri: Uri): Boolean {
@@ -36,6 +45,7 @@ class AdBlockerEngine @Inject constructor() {
         // Check if the host matches any of our blocked domains
         for (domain in blockedDomains) {
             if (host == domain || host.endsWith(".$domain")) {
+                _blockedAdsCount.update { it + 1 }
                 return true
             }
         }

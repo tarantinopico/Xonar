@@ -8,6 +8,7 @@ import com.tarantino.xonarx.presentation.browser.BrowserScreen
 import com.tarantino.xonarx.presentation.tabs.TabSwitcherScreen
 import com.tarantino.xonarx.presentation.identity.IdentityScreen
 import com.tarantino.xonarx.presentation.settings.SettingsScreen
+import com.tarantino.xonarx.presentation.settings.PrivacyStatsScreen
 import com.tarantino.xonarx.presentation.history.HistoryScreen
 import com.tarantino.xonarx.presentation.bookmarks.BookmarksScreen
 import com.tarantino.xonarx.presentation.downloads.DownloadsScreen
@@ -27,7 +28,8 @@ fun AppNavigation(navController: NavHostController) {
                 onNavigateToHistory = { navController.navigate(Screen.History.route) },
                 onNavigateToBookmarks = { navController.navigate(Screen.Bookmarks.route) },
                 onNavigateToDownloads = { navController.navigate(Screen.Downloads.route) },
-                onNavigateToNotes = { navController.navigate(Screen.Notes.route) }
+                onNavigateToNotes = { navController.navigate(Screen.Notes.route) },
+                onNavigateToPrivacyStats = { navController.navigate(Screen.PrivacyStats.route) }
             )
         }
         composable(Screen.TabSwitcher.route) {
@@ -62,6 +64,11 @@ fun AppNavigation(navController: NavHostController) {
         }
         composable(Screen.Notes.route) {
             NotesScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable(Screen.PrivacyStats.route) {
+            PrivacyStatsScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }

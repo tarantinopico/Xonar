@@ -5,11 +5,14 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
 import com.tarantino.xonarx.domain.repository.AppPreferences
+import com.tarantino.xonarx.domain.repository.CustomSearchEngine
 import com.tarantino.xonarx.domain.repository.SettingsRepository
 import com.tarantino.xonarx.domain.repository.ThemeMode
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import org.json.JSONArray
+import org.json.JSONObject
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -28,10 +31,20 @@ class SettingsRepositoryImpl @Inject constructor(
         val SEARCH_ENGINE = stringPreferencesKey("search_engine")
         val BIOMETRICS_ENABLED = booleanPreferencesKey("biometrics_enabled")
         val AUTO_CLEAR = booleanPreferencesKey("auto_clear")
+        
+        val BOTTOM_CONTROLS = booleanPreferencesKey("bottom_controls")
+        val EDGE_SWIPE_TO_CLOSE = booleanPreferencesKey("edge_swipe_to_close")
+        val DOUBLE_TAP_QUICK_SWITCH = booleanPreferencesKey("double_tap_quick_switch")
+        val REACHABILITY = booleanPreferencesKey("reachability")
+        val HAPTIC_FEEDBACK = booleanPreferencesKey("haptic_feedback")
+        val CUSTOM_SEARCH_ENGINES = stringPreferencesKey("custom_search_engines")
     }
 
     override val preferences: Flow<AppPreferences> = context.dataStore.data.map { prefs ->
         val themeModeStr = prefs[Keys.THEME_MODE] ?: ThemeMode.SYSTEM.name
+        val customSearchEnginesJson = prefs[Keys.CUSTOM_SEARCH_ENGINES] ?: "[]"
+        val customSearchEnginesList = parseCustomSearchEngines(customSearchEnginesJson)
+        
         AppPreferences(
             lastActiveIdentityId = prefs[Keys.LAST_IDENTITY_ID],
             themeMode = runCatching { ThemeMode.valueOf(themeModeStr) }.getOrDefault(ThemeMode.SYSTEM),
@@ -39,8 +52,46 @@ class SettingsRepositoryImpl @Inject constructor(
             gesturesEnabled = prefs[Keys.GESTURES_ENABLED] ?: true,
             searchEngineUrl = prefs[Keys.SEARCH_ENGINE] ?: "https://www.google.com/search?q=",
             biometricsEnabled = prefs[Keys.BIOMETRICS_ENABLED] ?: true,
-            autoClearOnExit = prefs[Keys.AUTO_CLEAR] ?: false
+            autoClearOnExit = prefs[Keys.AUTO_CLEAR] ?: false,
+            bottomControls = prefs[Keys.BOTTOM_CONTROLS] ?: false,
+            edgeSwipeToClose = prefs[Keys.EDGE_SWIPE_TO_CLOSE] ?: false,
+            doubleTapQuickSwitch = prefs[Keys.DOUBLE_TAP_QUICK_SWITCH] ?: true,
+            reachabilityEnabled = prefs[Keys.REACHABILITY] ?: true,
+            hapticFeedbackEnabled = prefs[Keys.HAPTIC_FEEDBACK] ?: true,
+            customSearchEngines = customSearchEnginesList
         )
+    }
+
+    private fun parseCustomSearchEngines(json: String): List<CustomSearchEngine> {
+        return try {
+            val array = JSONArray(json)
+            val list = mutableListOf<CustomSearchEngine>()
+            for (i in 0 until array.length()) {
+                val obj = array.getJSONObject(i)
+                list.add(
+                    CustomSearchEngine(
+                        id = obj.getString("id"),
+                        name = obj.getString("name"),
+                        urlTemplate = obj.getString("urlTemplate")
+                    )
+                )
+            }
+            list
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun serializeCustomSearchEngines(list: List<CustomSearchEngine>): String {
+        val array = JSONArray()
+        list.forEach {
+            val obj = JSONObject()
+            obj.put("id", it.id)
+            obj.put("name", it.name)
+            obj.put("urlTemplate", it.urlTemplate)
+            array.put(obj)
+        }
+        return array.toString()
     }
 
     override suspend fun updateLastActiveIdentityId(id: String?) {
@@ -75,5 +126,43 @@ class SettingsRepositoryImpl @Inject constructor(
 
     override suspend fun updateAutoClearOnExit(enabled: Boolean) {
         context.dataStore.edit { prefs -> prefs[Keys.AUTO_CLEAR] = enabled }
+    }
+
+    override suspend fun updateBottomControls(enabled: Boolean) {
+        context.dataStore.edit { prefs -> prefs[Keys.BOTTOM_CONTROLS] = enabled }
+    }
+
+    override suspend fun updateEdgeSwipeToClose(enabled: Boolean) {
+        context.dataStore.edit { prefs -> prefs[Keys.EDGE_SWIPE_TO_CLOSE] = enabled }
+    }
+
+    override suspend fun updateDoubleTapQuickSwitch(enabled: Boolean) {
+        context.dataStore.edit { prefs -> prefs[Keys.DOUBLE_TAP_QUICK_SWITCH] = enabled }
+    }
+
+    override suspend fun updateReachabilityEnabled(enabled: Boolean) {
+        context.dataStore.edit { prefs -> prefs[Keys.REACHABILITY] = enabled }
+    }
+
+    override suspend fun updateHapticFeedbackEnabled(enabled: Boolean) {
+        context.dataStore.edit { prefs -> prefs[Keys.HAPTIC_FEEDBACK] = enabled }
+    }
+
+    override suspend fun addCustomSearchEngine(engine: CustomSearchEngine) {
+        context.dataStore.edit { prefs ->
+            val json = prefs[Keys.CUSTOM_SEARCH_ENGINES] ?: "[]"
+            val current = parseCustomSearchEngines(json).toMutableList()
+            current.add(engine)
+            prefs[Keys.CUSTOM_SEARCH_ENGINES] = serializeCustomSearchEngines(current)
+        }
+    }
+
+    override suspend fun removeCustomSearchEngine(id: String) {
+        context.dataStore.edit { prefs ->
+            val json = prefs[Keys.CUSTOM_SEARCH_ENGINES] ?: "[]"
+            val current = parseCustomSearchEngines(json).toMutableList()
+            current.removeAll { it.id == id }
+            prefs[Keys.CUSTOM_SEARCH_ENGINES] = serializeCustomSearchEngines(current)
+        }
     }
 }

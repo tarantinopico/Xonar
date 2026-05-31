@@ -10,11 +10,13 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.lifecycle.viewModelScope
 import com.tarantino.xonarx.domain.usecase.SuggestionsEngine
+import com.tarantino.xonarx.domain.usecase.QrScannerUseCase
 
 @HiltViewModel
 class BrowserViewModel @Inject constructor(
     val sessionManager: BrowserSessionManager,
-    private val suggestionsEngine: SuggestionsEngine
+    private val suggestionsEngine: SuggestionsEngine,
+    private val qrScannerUseCase: QrScannerUseCase
 ) : ViewModel() {
     private val _suggestions = MutableStateFlow<List<String>>(emptyList())
     val suggestions = _suggestions.asStateFlow()
@@ -23,7 +25,10 @@ class BrowserViewModel @Inject constructor(
 
     fun capturePreviewForTab(tabId: String, identityId: String) {
         val session = sessionManager.getOrCreateSession(tabId, identityId)
-        session.previewBitmap = session.webView?.capturePreview()
+        val bmp = session.webView?.capturePreview()
+        if (bmp != null) {
+            sessionManager.updatePreview(tabId, bmp)
+        }
     }
 
     fun updateSearchQuery(query: String, identityId: String) {
@@ -36,6 +41,15 @@ class BrowserViewModel @Inject constructor(
             delay(300)
             val result = suggestionsEngine.getSuggestions(query, identityId)
             _suggestions.value = result
+        }
+    }
+
+    fun startQrScan(onResult: (String) -> Unit) {
+        viewModelScope.launch {
+            val result = qrScannerUseCase.scanQrCode()
+            if (!result.isNullOrBlank()) {
+                onResult(result)
+            }
         }
     }
 }
