@@ -69,6 +69,7 @@ fun BrowserScreen(
     var isFindInPageActive by remember { mutableStateOf(false) }
     var findInPageQuery by remember { mutableStateOf("") }
     var isDesktopSiteEnabled by remember { mutableStateOf(false) }
+    var contextualTarget by remember { mutableStateOf<ContextualActionTarget?>(null) }
 
     val focusRequester = remember { FocusRequester() }
 
@@ -153,6 +154,90 @@ fun BrowserScreen(
             confirmButton = {
                 TextButton(onClick = { showGroupDialog = false }) {
                     Text("Close")
+                }
+            }
+        )
+    }
+
+    contextualTarget?.let { target ->
+        val context = currentContext
+        ContextualMenuBottomSheet(
+            target = target,
+            onDismissRequest = { contextualTarget = null },
+            onActionClick = { action ->
+                val activeTab = uiState.activeTab
+                val targetUrl = when (target) {
+                    is ContextualActionTarget.Link -> target.url
+                    is ContextualActionTarget.Image -> target.imageUrl
+                    is ContextualActionTarget.ImageLink -> {
+                        when (action) {
+                            is ContextualAction.SaveImage, ContextualAction.OpenImageInNewTab, ContextualAction.CopyImageAddress, ContextualAction.SearchImageWithLens, ContextualAction.ShareImage -> target.imageUrl
+                            else -> target.url
+                        }
+                    }
+                    else -> ""
+                }
+
+                when (action) {
+                    ContextualAction.OpenInNewTab, ContextualAction.OpenImageInNewTab -> {
+                        viewModel.openTab(targetUrl, activeTab?.groupId)
+                    }
+                    ContextualAction.OpenInNewTabInGroup -> {
+                        if (activeTab?.groupId != null) {
+                            viewModel.openTab(targetUrl, activeTab.groupId)
+                        } else {
+                            val domain = com.tarantino.xonarx.domain.usecase.UrlHelper().getDomainName(targetUrl)
+                            val groupName = if (domain.isNotBlank()) domain.capitalize() else "New Group"
+                            activeTab?.id?.let {
+                                viewModel.openTabInNewGroup(targetUrl, it, groupName, 0xFF00ADB5.toInt()) // Default vibrant color
+                            }
+                        }
+                    }
+                    ContextualAction.Incognito -> {
+                        // Open in new tab, but without saving to history. For now, just new tab.
+                        viewModel.openTab(targetUrl)
+                    }
+                    ContextualAction.CopyLink, ContextualAction.CopyImageAddress -> {
+                        val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                        val cleanUrl = if (preferences.smartUrlCopyEnabled) {
+                            targetUrl.removePrefix("http://").removePrefix("https://").removeSuffix("/")
+                        } else {
+                            targetUrl
+                        }
+                        clipboard?.setPrimaryClip(android.content.ClipData.newPlainText("URL", cleanUrl))
+                        com.tarantino.xonarx.presentation.util.HapticFeedbackHelper.performSuccessHaptic(context)
+                    }
+                    ContextualAction.ShareLink, ContextualAction.ShareImage -> {
+                        val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(android.content.Intent.EXTRA_TEXT, targetUrl)
+                        }
+                        context.startActivity(android.content.Intent.createChooser(shareIntent, "Share"))
+                    }
+                    ContextualAction.OpenInExternalApp -> {
+                        try {
+                            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(targetUrl))
+                            context.startActivity(intent)
+                        } catch (e: Exception) {
+                            // Ignore
+                        }
+                    }
+                    ContextualAction.AddToFavorites -> {
+                        viewModel.addBookmarkContextually(targetUrl, targetUrl, uiState.activeIdentity?.id)
+                        com.tarantino.xonarx.presentation.util.HapticFeedbackHelper.performSuccessHaptic(context)
+                    }
+                    ContextualAction.DownloadLink, ContextualAction.SaveImage -> {
+                        val fileName = android.net.Uri.parse(targetUrl).lastPathSegment ?: "download"
+                        uiState.activeIdentity?.id?.let { identityId ->
+                            browserViewModel.sessionManager.downloadUrl(targetUrl, fileName, identityId)
+                            com.tarantino.xonarx.presentation.util.HapticFeedbackHelper.performSuccessHaptic(context)
+                        }
+                    }
+                    ContextualAction.SearchImageWithLens -> {
+                         val lensUrl = "https://lens.google.com/uploadbyurl?url=${android.net.Uri.encode(targetUrl)}"
+                         viewModel.openTab(lensUrl, activeTab?.groupId)
+                    }
+                    ContextualAction.TranslatePage -> {}
                 }
             }
         )
@@ -310,6 +395,10 @@ fun BrowserScreen(
                     onPageUpdate = { url, title -> 
                         viewModel.updateActiveTabUrl(url, title)
                         viewModel.addToHistory(url, title)
+                    },
+                    onLongPressElement = { target ->
+                        com.tarantino.xonarx.presentation.util.HapticFeedbackHelper.performLightHaptic(currentContext, preferences.hapticFeedbackEnabled)
+                        contextualTarget = target
                     }
                 )
             } else {
@@ -761,7 +850,8 @@ fun WebViewContainer(
     tab: Tab,
     sessionManager: BrowserSessionManager,
     modifier: Modifier = Modifier,
-    onPageUpdate: (String, String?) -> Unit = { _, _ -> }
+    onPageUpdate: (String, String?) -> Unit = { _, _ -> },
+    onLongPressElement: ((ContextualActionTarget) -> Unit)? = null
 ) {
     val session = remember(tab.id) { sessionManager.getOrCreateSession(tab.id, tab.identityId) }
 
@@ -770,10 +860,12 @@ fun WebViewContainer(
         factory = { context ->
             val wv = session.webView ?: error("WebView should not be null here")
             wv.onPageUpdate = onPageUpdate
+            wv.onLongPressElement = onLongPressElement
             wv
         },
         update = { webView ->
             webView.onPageUpdate = onPageUpdate
+            webView.onLongPressElement = onLongPressElement
             if (webView.url != tab.url && tab.url.isNotEmpty()) {
                 webView.loadUrl(tab.url)
             }

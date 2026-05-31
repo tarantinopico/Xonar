@@ -34,6 +34,7 @@ class BrowserWebView(
 
     var onPageUpdate: ((String, String?) -> Unit)? = null
     var onLoadingStateChanged: ((Boolean) -> Unit)? = null
+    var onLongPressElement: ((ContextualActionTarget) -> Unit)? = null
     var backgroundVideoPlaybackEnabled: Boolean = false
 
     fun capturePreview(): Bitmap? {
@@ -92,6 +93,29 @@ class BrowserWebView(
         setDownloadListener { url, _, contentDisposition, mimetype, _ ->
             val fileName = Uri.parse(url).lastPathSegment ?: "downloaded_file"
             onDownloadStarted(url, fileName)
+        }
+
+        setOnLongClickListener {
+            val result = hitTestResult
+            val target = when (result.type) {
+                HitTestResult.SRC_ANCHOR_TYPE -> {
+                    result.extra?.let { ContextualActionTarget.Link(it) }
+                }
+                HitTestResult.IMAGE_TYPE -> {
+                    result.extra?.let { ContextualActionTarget.Image(it) }
+                }
+                HitTestResult.SRC_IMAGE_ANCHOR_TYPE -> {
+                    result.extra?.let { ContextualActionTarget.ImageLink(it, it) }
+                }
+                else -> null
+            }
+            if (target != null) {
+                // Haptic feedback will be triggered from the Compose UI layer or ViewModel.
+                onLongPressElement?.invoke(target)
+                true
+            } else {
+                false
+            }
         }
     }
 }

@@ -51,6 +51,10 @@ class BrowserSessionManager(
         return webViewPools.getOrPut(identityId) { ConcurrentLinkedQueue() }
     }
 
+    fun downloadUrl(url: String, fileName: String, identityId: String) {
+        downloadManagerUseCase.startDownload(url, fileName, identityId)
+    }
+
     private fun createWebView(identityId: String): BrowserWebView {
         val wv = BrowserWebView(
             applicationContext,

@@ -192,6 +192,27 @@ class MainViewModel @Inject constructor(
             bookmarkRepository.addBookmark(bookmark)
         }
     }
+
+    fun addBookmarkContextually(url: String, title: String, identityId: String?) {
+        val targetIdentityId = identityId ?: uiState.value.activeIdentity?.id ?: return
+        if (url.isEmpty() || url == "about:blank" || url == "Loading...") return
+        
+        viewModelScope.launch {
+            val bookmark = Bookmark(
+                id = UUID.randomUUID().toString(),
+                identityId = targetIdentityId,
+                url = url,
+                title = title,
+                folderId = null,
+                faviconUrl = null,
+                createdAt = System.currentTimeMillis(),
+                updatedAt = System.currentTimeMillis(),
+                sortOrder = 0,
+                isFavorite = true
+            )
+            bookmarkRepository.addBookmark(bookmark)
+        }
+    }
     
     fun openTab(url: String, groupId: String? = null, overrideIdentityId: String? = null) {
         val identity = uiState.value.activeIdentity ?: return
@@ -291,6 +312,33 @@ class MainViewModel @Inject constructor(
                     tabRepository.updateTab(tab.copy(groupId = groupId))
                 }
             }
+        }
+    }
+
+    fun openTabInNewGroup(url: String, currentTabId: String, groupName: String, groupColor: Int) {
+        val identity = uiState.value.activeIdentity ?: return
+        viewModelScope.launch {
+            val groupId = UUID.randomUUID().toString()
+            val newGroup = TabGroup(
+                id = groupId,
+                identityId = identity.id,
+                name = groupName,
+                color = groupColor,
+                isExpanded = true,
+                orderIndex = System.currentTimeMillis().toInt(),
+                createdAt = System.currentTimeMillis(),
+                updatedAt = System.currentTimeMillis()
+            )
+            tabGroupRepository.addGroup(newGroup)
+            
+            // Move current tab to new group
+            val currentTab = uiState.value.tabs.find { it.id == currentTabId }
+            if (currentTab != null) {
+                tabRepository.updateTab(currentTab.copy(groupId = groupId))
+            }
+            
+            // Open new tab in that same group
+            openTab(url, groupId = groupId)
         }
     }
 

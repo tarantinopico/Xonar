@@ -73,6 +73,10 @@ class FakeSettingsRepository : SettingsRepository {
     override suspend fun completeOnboarding() {}
     override suspend fun updateNtpWidgets(widgets: List<String>) {}
     override suspend fun updateWebNotificationsEnabled(enabled: Boolean) {}
+    override suspend fun updateDefaultPageZoom(zoom: Int) {}
+    override suspend fun updateThumbnailSize(size: String) {}
+    override suspend fun updateSmartUrlCopyEnabled(enabled: Boolean) {}
+    override suspend fun updateBackgroundVideoPlayback(enabled: Boolean) {}
 }
 
 class FakeIdentityRepository : IdentityRepository {
@@ -95,6 +99,7 @@ class MainViewModelGroupTest {
     private lateinit var tabRepo: FakeTabRepository
     private lateinit var viewModel: MainViewModel
     private lateinit var collectJob: kotlinx.coroutines.Job
+    private val fakeBookmarkFlow = MutableStateFlow<List<Bookmark>>(emptyList())
 
     @Before
     fun setup() {
@@ -111,10 +116,10 @@ class MainViewModelGroupTest {
             tabRepository = tabRepo,
             tabGroupRepository = tabGroupRepo,
             bookmarkRepository = object : BookmarkRepository {
-                override fun observeBookmarks(id: String) = flowOf(emptyList<Bookmark>())
-                override suspend fun addBookmark(b: Bookmark) {}
-                override suspend fun removeBookmark(b: Bookmark) {}
-                override suspend fun updateBookmark(b: Bookmark) {}
+                override fun observeBookmarks(id: String) = fakeBookmarkFlow
+                override suspend fun addBookmark(b: Bookmark) { fakeBookmarkFlow.update { it + b } }
+                override suspend fun removeBookmark(b: Bookmark) { fakeBookmarkFlow.update { list -> list.filter { it.id != b.id } } }
+                override suspend fun updateBookmark(b: Bookmark) { fakeBookmarkFlow.update { list -> list.map { if (it.id == b.id) b else it } } }
             },
             historyRepository = object : HistoryRepository {
                 override fun observeHistory(id: String) = flowOf(emptyList<HistoryItem>())
@@ -134,7 +139,9 @@ class MainViewModelGroupTest {
 
     @After
     fun tearDown() {
-        collectJob.cancel()
+        if (::collectJob.isInitialized) {
+            collectJob.cancel()
+        }
         Dispatchers.resetMain()
     }
 
@@ -199,5 +206,41 @@ class MainViewModelGroupTest {
         advanceUntilIdle()
         
         assertEquals(groupId, viewModel.uiState.value.tabs[0].groupId)
+    }
+    
+    @Test
+    fun openTabInNewGroup_createsGroupAndOpensTab() = runTest {
+        val tab1 = Tab("t1", "1", "url", "tt", null, true, false, false, null, 0, 0, 0)
+        tabRepo.addTab(tab1)
+        advanceUntilIdle()
+        
+        viewModel.openTabInNewGroup("https://example.com", "t1", "Example", 0xFF00ADB5.toInt())
+        advanceUntilIdle()
+        
+        val state = viewModel.uiState.value
+        assertEquals(1, state.tabGroups.size)
+        assertEquals("Example", state.tabGroups[0].name)
+        
+        // Two tabs: t1 and the new tab. Both should be in the new group.
+        assertEquals(2, state.tabs.size)
+        val newGroupId = state.tabGroups[0].id
+        assertEquals(newGroupId, state.tabs.find { it.id == "t1" }?.groupId)
+        assertEquals(newGroupId, state.tabs.find { it.url == "https://example.com" }?.groupId)
+    }
+
+    @Test
+    fun addBookmarkContextually_addsBookmark() = runTest {
+        advanceUntilIdle()
+        
+        viewModel.addBookmarkContextually("https://test.com", "Test Title", "1")
+        advanceUntilIdle()
+
+        val bookmarks = fakeBookmarkFlow.value
+        assertEquals(1, bookmarks.size)
+        val bookmark = bookmarks[0]
+        assertEquals("https://test.com", bookmark.url)
+        assertEquals("Test Title", bookmark.title)
+        assertEquals(true, bookmark.isFavorite)
+        assertEquals("1", bookmark.identityId)
     }
 }
