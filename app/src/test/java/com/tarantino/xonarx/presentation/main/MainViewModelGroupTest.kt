@@ -62,6 +62,17 @@ class FakeSettingsRepository : SettingsRepository {
     override suspend fun updateSearchEngine(url: String) {}
     override suspend fun updateBiometricsEnabled(enabled: Boolean) {}
     override suspend fun updateAutoClearOnExit(enabled: Boolean) {}
+    override suspend fun updateBottomControls(enabled: Boolean) {}
+    override suspend fun updateEdgeSwipeToClose(enabled: Boolean) {}
+    override suspend fun updateDoubleTapQuickSwitch(enabled: Boolean) {}
+    override suspend fun updateReachabilityEnabled(enabled: Boolean) {}
+    override suspend fun updateHapticFeedbackEnabled(enabled: Boolean) {}
+    override suspend fun addCustomSearchEngine(engine: CustomSearchEngine) {}
+    override suspend fun removeCustomSearchEngine(id: String) {}
+    override suspend fun updateDataSaverEnabled(enabled: Boolean) {}
+    override suspend fun completeOnboarding() {}
+    override suspend fun updateNtpWidgets(widgets: List<String>) {}
+    override suspend fun updateWebNotificationsEnabled(enabled: Boolean) {}
 }
 
 class FakeIdentityRepository : IdentityRepository {
