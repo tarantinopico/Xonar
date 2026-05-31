@@ -3,6 +3,9 @@ package com.tarantino.xonarx.presentation.browser
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -224,91 +227,7 @@ fun BrowserScreen(
                     onSwipeLeft = { viewModel.switchNextIdentity() },
                     onSwipeRight = { viewModel.switchPreviousIdentity() },
                     menuContent = {
-                        // ... menu ...
-                        if (menuExpanded) {
-                            val context = androidx.compose.ui.platform.LocalContext.current
-                            BrowserMenu(
-                                expanded = menuExpanded,
-                                onDismiss = { menuExpanded = false },
-                                onNavigateToIdentityManager = onNavigateToIdentityManager,
-                                onNavigateToSettings = onNavigateToSettings,
-                                onNavigateToHistory = onNavigateToHistory,
-                                onNavigateToBookmarks = onNavigateToBookmarks,
-                                onNavigateToDownloads = onNavigateToDownloads,
-                                onNavigateToNotes = onNavigateToNotes,
-                                onNavigateToPrivacyStats = onNavigateToPrivacyStats,
-                                onAddToFavoritesClick = { viewModel.addToFavorites() },
-                                onAddToGroupClick = { showGroupDialog = true },
-                                onNavigateForward = {
-                                    uiState.activeTab?.let { activeTab ->
-                                        val session = browserViewModel.sessionManager.getOrCreateSession(activeTab.id, activeTab.identityId)
-                                        session.webView?.goForward()
-                                    }
-                                },
-                                onScanQrClick = {
-                                    browserViewModel.startQrScan { result ->
-                                        viewModel.navigate(result)
-                                    }
-                                },
-                                onPrintPdfClick = {
-                                    uiState.activeTab?.let { activeTab ->
-                                        val session = browserViewModel.sessionManager.getOrCreateSession(activeTab.id, activeTab.identityId)
-                                        val wv = session.webView
-                                        if (wv != null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                                            val printManager = context.getSystemService(android.content.Context.PRINT_SERVICE) as? android.print.PrintManager
-                                            val printAdapter = wv.createPrintDocumentAdapter("Xonar_${activeTab.title}")
-                                            val printAttributes = android.print.PrintAttributes.Builder()
-                                                .setMediaSize(android.print.PrintAttributes.MediaSize.ISO_A4)
-                                                .build()
-                                            printManager?.print("Xonar Document", printAdapter, printAttributes)
-                                        }
-                                    }
-                                },
-                                onEnterPipClick = {
-                                    val activity = context as? android.app.Activity
-                                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                                        val params = android.app.PictureInPictureParams.Builder()
-                                            .build()
-                                        try {
-                                            activity?.enterPictureInPictureMode(params)
-                                        } catch (e: Exception) {
-                                            e.printStackTrace()
-                                        }
-                                    }
-                                },
-                                onFindInPageClick = { isFindInPageActive = true },
-                                onCopyLinkClick = {
-                                    uiState.activeTab?.url?.let { url ->
-                                        val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
-                                        clipboard?.setPrimaryClip(android.content.ClipData.newPlainText("URL", url))
-                                        com.tarantino.xonarx.presentation.util.HapticFeedbackHelper.performLightHaptic(currentContext, preferences.hapticFeedbackEnabled)
-                                    }
-                                },
-                                onOpenExternalClick = {
-                                    uiState.activeTab?.url?.let { url ->
-                                        try {
-                                            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
-                                            context.startActivity(intent)
-                                        } catch (e: Exception) {
-                                            e.printStackTrace()
-                                        }
-                                    }
-                                },
-                                isDesktopSite = isDesktopSiteEnabled,
-                                onToggleDesktopSite = {
-                                    isDesktopSiteEnabled = !isDesktopSiteEnabled
-                                    uiState.activeTab?.id?.let { activeTabId ->
-                                        val session = browserViewModel.sessionManager.getOrCreateSession(activeTabId, uiState.activeTab?.identityId ?: "")
-                                        session.webView?.settings?.userAgentString = if (isDesktopSiteEnabled) {
-                                            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-                                        } else {
-                                            android.webkit.WebSettings.getDefaultUserAgent(context)
-                                        }
-                                        session.webView?.reload()
-                                    }
-                                }
-                            )
-                        }
+                        // Empty since menu is shown via bottom sheet at root level
                     }
                 )
             }
@@ -364,7 +283,8 @@ fun BrowserScreen(
                     onNewTabLongClick = {
                         com.tarantino.xonarx.presentation.util.HapticFeedbackHelper.performLightHaptic(currentContext, preferences.hapticFeedbackEnabled)
                         showIdentitySelector = true
-                    }
+                    },
+                    onMenuClick = { menuExpanded = true }
                 )
             }
         }
@@ -635,6 +555,95 @@ fun BrowserScreen(
                 }
             }
         }
+    }
+
+    if (menuExpanded) {
+        val context = androidx.compose.ui.platform.LocalContext.current
+        BrowserMenu(
+            expanded = menuExpanded,
+            onDismiss = { menuExpanded = false },
+            onNavigateToIdentityManager = onNavigateToIdentityManager,
+            onNavigateToSettings = onNavigateToSettings,
+            onNavigateToHistory = onNavigateToHistory,
+            onNavigateToBookmarks = onNavigateToBookmarks,
+            onNavigateToDownloads = onNavigateToDownloads,
+            onNavigateToNotes = onNavigateToNotes,
+            onNavigateToPrivacyStats = onNavigateToPrivacyStats,
+            onAddToFavoritesClick = { viewModel.addToFavorites() },
+            onAddToGroupClick = { showGroupDialog = true },
+            onNavigateForward = {
+                uiState.activeTab?.let { activeTab ->
+                    val session = browserViewModel.sessionManager.getOrCreateSession(activeTab.id, activeTab.identityId)
+                    session.webView?.goForward()
+                }
+            },
+            onScanQrClick = {
+                browserViewModel.startQrScan { result ->
+                    viewModel.navigate(result)
+                }
+            },
+            onPrintPdfClick = {
+                uiState.activeTab?.let { activeTab ->
+                    val session = browserViewModel.sessionManager.getOrCreateSession(activeTab.id, activeTab.identityId)
+                    val wv = session.webView
+                    if (wv != null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                        val printManager = context.getSystemService(android.content.Context.PRINT_SERVICE) as? android.print.PrintManager
+                        val printAdapter = wv.createPrintDocumentAdapter("Xonar_${activeTab.title}")
+                        val printAttributes = android.print.PrintAttributes.Builder()
+                            .setMediaSize(android.print.PrintAttributes.MediaSize.ISO_A4)
+                            .build()
+                        printManager?.print("Xonar Document", printAdapter, printAttributes)
+                    }
+                }
+            },
+            onEnterPipClick = {
+                val activity = context as? android.app.Activity
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    val params = android.app.PictureInPictureParams.Builder()
+                        .build()
+                    try {
+                        activity?.enterPictureInPictureMode(params)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            },
+            onFindInPageClick = { isFindInPageActive = true },
+            onCopyLinkClick = {
+                uiState.activeTab?.url?.let { url ->
+                    val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                    clipboard?.setPrimaryClip(android.content.ClipData.newPlainText("URL", url))
+                    com.tarantino.xonarx.presentation.util.HapticFeedbackHelper.performLightHaptic(currentContext, preferences.hapticFeedbackEnabled)
+                }
+            },
+            onOpenExternalClick = {
+                uiState.activeTab?.url?.let { url ->
+                    try {
+                        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            },
+            isDesktopSite = isDesktopSiteEnabled,
+            onToggleDesktopSite = {
+                isDesktopSiteEnabled = !isDesktopSiteEnabled
+                uiState.activeTab?.id?.let { activeTabId ->
+                    val session = browserViewModel.sessionManager.getOrCreateSession(activeTabId, uiState.activeTab?.identityId ?: "")
+                    session.webView?.settings?.userAgentString = if (isDesktopSiteEnabled) {
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                    } else {
+                        android.webkit.WebSettings.getDefaultUserAgent(context)
+                    }
+                    session.webView?.reload()
+                }
+            },
+            canGroup = uiState.tabGroups.isNotEmpty() && uiState.activeTab?.groupId == null,
+            isPinned = uiState.activeTab?.isPinned == true,
+            onTogglePin = { uiState.activeTab?.let { viewModel.toggleTabPinnedState(it) } },
+            hasActiveTab = uiState.activeTab != null
+        )
     }
 }
 
@@ -947,6 +956,7 @@ fun BrowserTopBar(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BrowserMenu(
     expanded: Boolean,
@@ -968,149 +978,207 @@ fun BrowserMenu(
     onCopyLinkClick: () -> Unit,
     onOpenExternalClick: () -> Unit,
     isDesktopSite: Boolean,
-    onToggleDesktopSite: () -> Unit
+    onToggleDesktopSite: () -> Unit,
+    canGroup: Boolean = false,
+    isPinned: Boolean = false,
+    onTogglePin: () -> Unit = {},
+    hasActiveTab: Boolean = false
 ) {
-    DropdownMenu(
-        expanded = expanded,
-        onDismissRequest = onDismiss
+    if (!expanded) return
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        dragHandle = { BottomSheetDefaults.DragHandle() },
     ) {
-        DropdownMenuItem(
-            text = { Text("Forward") },
-            onClick = {
-                onNavigateForward()
-                onDismiss()
-            },
-            leadingIcon = { Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null) }
-        )
-        DropdownMenuItem(
-            text = { Text("Find in Page") },
-            onClick = {
-                onFindInPageClick()
-                onDismiss()
-            },
-            leadingIcon = { Icon(Icons.Default.FindInPage, contentDescription = null) }
-        )
-        DropdownMenuItem(
-            text = { Text("Copy Link") },
-            onClick = {
-                onCopyLinkClick()
-                onDismiss()
-            },
-            leadingIcon = { Icon(Icons.Default.Link, contentDescription = null) }
-        )
-        DropdownMenuItem(
-            text = { Text(if (isDesktopSite) "Mobile Site" else "Desktop Site") },
-            onClick = {
-                onToggleDesktopSite()
-                onDismiss()
-            },
-            leadingIcon = { Icon(Icons.Default.DesktopMac, contentDescription = null) }
-        )
-        DropdownMenuItem(
-            text = { Text("Open in external app") },
-            onClick = {
-                onOpenExternalClick()
-                onDismiss()
-            },
-            leadingIcon = { Icon(Icons.Default.OpenInBrowser, contentDescription = null) }
-        )
-        DropdownMenuItem(
-            text = { Text("Add to Favorites") },
-            onClick = {
-                onAddToFavoritesClick()
-                onDismiss()
-            },
-            leadingIcon = { Icon(Icons.Default.Star, contentDescription = null) }
-        )
-        DropdownMenuItem(
-            text = { Text("Add to Group") },
-            onClick = {
-                onAddToGroupClick()
-                onDismiss()
-            },
-            leadingIcon = { Icon(Icons.Default.Folder, contentDescription = null) }
-        )
-        DropdownMenuItem(
-            text = { Text("Scan QR Code") },
-            onClick = {
-                onScanQrClick()
-                onDismiss()
-            },
-            leadingIcon = { Icon(Icons.Default.QrCodeScanner, contentDescription = null) }
-        )
-        DropdownMenuItem(
-            text = { Text("Picture-in-Picture") },
-            onClick = {
-                onEnterPipClick()
-                onDismiss()
-            },
-            leadingIcon = { Icon(Icons.Default.PictureInPictureAlt, contentDescription = null) }
-        )
-        DropdownMenuItem(
-            text = { Text("Save as PDF") },
-            onClick = {
-                onPrintPdfClick()
-                onDismiss()
-            },
-            leadingIcon = { Icon(Icons.Default.PictureAsPdf, contentDescription = null) }
-        )
-        HorizontalDivider()
-        DropdownMenuItem(
-            text = { Text("Identities") },
-            onClick = {
-                onNavigateToIdentityManager()
-                onDismiss()
-            },
-            leadingIcon = { Icon(Icons.Default.AccountCircle, contentDescription = null) }
-        )
-        DropdownMenuItem(
-            text = { Text("History") },
-            onClick = {
-                onNavigateToHistory()
-                onDismiss()
-            },
-            leadingIcon = { Icon(Icons.Default.History, contentDescription = null) }
-        )
-        DropdownMenuItem(
-            text = { Text("Bookmarks") },
-            onClick = {
-                onNavigateToBookmarks()
-                onDismiss()
-            },
-            leadingIcon = { Icon(Icons.Default.Bookmark, contentDescription = null) }
-        )
-        DropdownMenuItem(
-            text = { Text("Downloads") },
-            onClick = {
-                onNavigateToDownloads()
-                onDismiss()
-            },
-            leadingIcon = { Icon(Icons.Default.Download, contentDescription = null) }
-        )
-        DropdownMenuItem(
-            text = { Text("Notes") },
-            onClick = {
-                onNavigateToNotes()
-                onDismiss()
-            },
-            leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
-        )
-        DropdownMenuItem(
-            text = { Text("Privacy Stats") },
-            onClick = {
-                onNavigateToPrivacyStats()
-                onDismiss()
-            },
-            leadingIcon = { Icon(Icons.Default.Security, contentDescription = null) }
-        )
-        HorizontalDivider()
-        DropdownMenuItem(
-            text = { Text("Settings") },
-            onClick = {
-                onNavigateToSettings()
-                onDismiss()
-            },
-            leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) }
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+        ) {
+            Text("Browser Options", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(bottom = 16.dp, start = 8.dp))
+            
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = 80.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(bottom = 24.dp)
+            ) {
+                // Actions available when there is an active tab
+                if (hasActiveTab) {
+                    item {
+                        BrowserMenuAction(
+                            icon = Icons.AutoMirrored.Filled.ArrowForward,
+                            label = "Forward",
+                            onClick = { onNavigateForward(); onDismiss() }
+                        )
+                    }
+                    item {
+                        BrowserMenuAction(
+                            icon = Icons.Default.FindInPage,
+                            label = "Find in Page",
+                            onClick = { onFindInPageClick(); onDismiss() }
+                        )
+                    }
+                    item {
+                        BrowserMenuAction(
+                            icon = Icons.Default.Link,
+                            label = "Copy Link",
+                            onClick = { onCopyLinkClick(); onDismiss() }
+                        )
+                    }
+                    item {
+                        BrowserMenuAction(
+                            icon = Icons.Default.DesktopMac,
+                            label = if (isDesktopSite) "Mobile Site" else "Desktop Site",
+                            onClick = { onToggleDesktopSite(); onDismiss() }
+                        )
+                    }
+                    item {
+                        BrowserMenuAction(
+                            icon = Icons.Default.OpenInBrowser,
+                            label = "Open External",
+                            onClick = { onOpenExternalClick(); onDismiss() }
+                        )
+                    }
+                    item {
+                        BrowserMenuAction(
+                            icon = Icons.Default.Star,
+                            label = "Add Favorite",
+                            onClick = { onAddToFavoritesClick(); onDismiss() }
+                        )
+                    }
+                    if (canGroup) {
+                        item {
+                            BrowserMenuAction(
+                                icon = Icons.Default.Folder,
+                                label = "Add to Group",
+                                onClick = { onAddToGroupClick(); onDismiss() }
+                            )
+                        }
+                    }
+                    item {
+                        BrowserMenuAction(
+                            icon = if (isPinned) Icons.Default.PushPin else Icons.Default.PushPin, // Wait, unpin might be different. I will use PushPin.
+                            label = if (isPinned) "Unpin Tab" else "Pin Tab",
+                            onClick = { onTogglePin(); onDismiss() }
+                        )
+                    }
+                    item {
+                        BrowserMenuAction(
+                            icon = Icons.Default.PictureInPictureAlt,
+                            label = "PiP Mode",
+                            onClick = { onEnterPipClick(); onDismiss() }
+                        )
+                    }
+                    item {
+                        BrowserMenuAction(
+                            icon = Icons.Default.PictureAsPdf,
+                            label = "Save PDF",
+                            onClick = { onPrintPdfClick(); onDismiss() }
+                        )
+                    }
+                }
+
+                // Global Actions
+                item {
+                    BrowserMenuAction(
+                        icon = Icons.Default.QrCodeScanner,
+                        label = "Scan QR",
+                        onClick = { onScanQrClick(); onDismiss() }
+                    )
+                }
+                item {
+                    BrowserMenuAction(
+                            icon = Icons.Default.History,
+                            label = "History",
+                            onClick = { onNavigateToHistory(); onDismiss() }
+                    )
+                }
+                item {
+                    BrowserMenuAction(
+                        icon = Icons.Default.Bookmark,
+                        label = "Bookmarks",
+                        onClick = { onNavigateToBookmarks(); onDismiss() }
+                    )
+                }
+                item {
+                    BrowserMenuAction(
+                        icon = Icons.Default.Download,
+                        label = "Downloads",
+                        onClick = { onNavigateToDownloads(); onDismiss() }
+                    )
+                }
+                item {
+                    BrowserMenuAction(
+                        icon = Icons.Default.Edit,
+                        label = "Notes",
+                        onClick = { onNavigateToNotes(); onDismiss() }
+                    )
+                }
+                item {
+                    BrowserMenuAction(
+                        icon = Icons.Default.AccountCircle,
+                        label = "Identities",
+                        onClick = { onNavigateToIdentityManager(); onDismiss() }
+                    )
+                }
+                item {
+                    BrowserMenuAction(
+                        icon = Icons.Default.Security,
+                        label = "Privacy",
+                        onClick = { onNavigateToPrivacyStats(); onDismiss() }
+                    )
+                }
+                item {
+                    BrowserMenuAction(
+                        icon = Icons.Default.Settings,
+                        label = "Settings",
+                        onClick = { onNavigateToSettings(); onDismiss() }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun BrowserMenuAction(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Surface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.secondaryContainer,
+            modifier = Modifier.size(48.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = label,
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
     }
 }

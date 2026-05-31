@@ -11,6 +11,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -37,6 +38,7 @@ fun BrowserBottomToolbar(
     onTabCountClick: () -> Unit,
     onNewTabClick: () -> Unit,
     onNewTabLongClick: () -> Unit,
+    onMenuClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -135,6 +137,19 @@ fun BrowserBottomToolbar(
                             text = tabCount.toString(),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+                // Menu Button
+                DepthCard(
+                    modifier = Modifier.size(48.dp).clip(CircleShape),
+                    onClick = onMenuClick
+                ) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Icon(
+                            Icons.Default.MoreVert,
+                            contentDescription = "Menu",
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }

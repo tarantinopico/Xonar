@@ -235,6 +235,12 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    fun toggleTabPinnedState(tab: Tab) {
+        viewModelScope.launch {
+            tabRepository.updateTab(tab.copy(isPinned = !tab.isPinned))
+        }
+    }
+
     fun selectTab(tab: Tab) {
         viewModelScope.launch {
             tabRepository.activateTab(tab.id, tab.identityId)
