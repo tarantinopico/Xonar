@@ -12,9 +12,13 @@ import com.tarantino.xonarx.domain.repository.AppPreferences
 import com.tarantino.xonarx.domain.repository.SettingsRepository
 import com.tarantino.xonarx.domain.repository.ThemeMode
 import com.tarantino.xonarx.presentation.navigation.AppNavigation
+import com.tarantino.xonarx.presentation.navigation.Screen
 import com.tarantino.xonarx.presentation.theme.XonarTheme
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+
+import androidx.compose.runtime.produceState
+import kotlinx.coroutines.flow.first
 
 @AndroidEntryPoint
 class MainActivity : FragmentActivity() {
@@ -24,8 +28,15 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            val prefs by settingsRepository.preferences.collectAsState(initial = AppPreferences())
+            val prefsState = produceState<AppPreferences?>(initialValue = null) {
+                value = settingsRepository.preferences.first()
+            }
             
+            val prefs = prefsState.value
+            if (prefs == null) {
+                return@setContent
+            }
+
             val isDark = when (prefs.themeMode) {
                 ThemeMode.LIGHT -> false
                 ThemeMode.DARK -> true
@@ -37,7 +48,10 @@ class MainActivity : FragmentActivity() {
                 dynamicColor = prefs.useMaterialYou
             ) {
                 val navController = rememberNavController()
-                AppNavigation(navController = navController)
+                AppNavigation(
+                    navController = navController,
+                    startDestination = if (prefs.hasCompletedOnboarding) Screen.Browser.route else Screen.Onboarding.route
+                )
             }
         }
     }

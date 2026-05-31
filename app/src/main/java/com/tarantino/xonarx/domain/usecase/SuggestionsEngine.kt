@@ -22,6 +22,23 @@ class SuggestionsEngine @Inject constructor(
         if (query.isBlank()) return@withContext emptyList()
         val results = mutableSetOf<String>()
 
+        // 0. Universal Commands
+        val lq = query.lowercase()
+        val commands = mapOf(
+            "xonar://settings" to listOf("settings", "theme", "tools", "options"),
+            "xonar://history" to listOf("history", "recent"),
+            "xonar://bookmarks" to listOf("bookmarks", "favorites"),
+            "xonar://downloads" to listOf("downloads", "files"),
+            "xonar://notes" to listOf("notes", "memo"),
+            "xonar://userscripts" to listOf("userscripts", "css", "extensions"),
+            "xonar://feeds" to listOf("feeds", "rss", "news")
+        )
+        for ((route, keywords) in commands) {
+            if (keywords.any { it.startsWith(lq) }) {
+                results.add(route)
+            }
+        }
+
         // 1. History (local)
         try {
             historyRepository.observeHistory(identityId)

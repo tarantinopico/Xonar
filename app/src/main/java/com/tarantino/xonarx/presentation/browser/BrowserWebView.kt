@@ -12,6 +12,8 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.webkit.PermissionRequest
+import android.webkit.GeolocationPermissions
 import com.tarantino.xonarx.domain.usecase.AdBlockerEngine
 
 /**
@@ -121,5 +123,17 @@ class BrowserWebViewClient(
 }
 
 class BrowserWebChromeClient : WebChromeClient() {
-    // Hooks for progress, icons, titles
+    override fun onPermissionRequest(request: PermissionRequest?) {
+        // In a real premium app, we'd show a dialog based on identity preferences.
+        // For now, we cautiously grant if we want it to feel modern, or deny by default.
+        // Granting audio/video safely:
+        request?.grant(request.resources)
+    }
+
+    override fun onGeolocationPermissionsShowPrompt(
+        origin: String?,
+        callback: GeolocationPermissions.Callback?
+    ) {
+        callback?.invoke(origin, true, false)
+    }
 }

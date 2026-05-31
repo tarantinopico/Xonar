@@ -14,12 +14,15 @@ import com.tarantino.xonarx.presentation.history.HistoryScreen
 import com.tarantino.xonarx.presentation.bookmarks.BookmarksScreen
 import com.tarantino.xonarx.presentation.downloads.DownloadsScreen
 import com.tarantino.xonarx.presentation.notes.NotesScreen
+import com.tarantino.xonarx.presentation.feeds.FeedsScreen
+
+import com.tarantino.xonarx.presentation.onboarding.OnboardingScreen
 
 @Composable
-fun AppNavigation(navController: NavHostController) {
+fun AppNavigation(navController: NavHostController, startDestination: String = Screen.Browser.route) {
     NavHost(
         navController = navController,
-        startDestination = Screen.Browser.route
+        startDestination = startDestination
     ) {
         composable(Screen.Browser.route) {
             BrowserScreen(
@@ -31,7 +34,8 @@ fun AppNavigation(navController: NavHostController) {
                 onNavigateToDownloads = { navController.navigate(Screen.Downloads.route) },
                 onNavigateToNotes = { navController.navigate(Screen.Notes.route) },
                 onNavigateToPrivacyStats = { navController.navigate(Screen.PrivacyStats.route) },
-                onNavigateToUserscripts = { navController.navigate(Screen.Userscripts.route) }
+                onNavigateToUserscripts = { navController.navigate(Screen.Userscripts.route) },
+                onNavigateToFeeds = { navController.navigate(Screen.Feeds.route) }
             )
         }
         composable(Screen.TabSwitcher.route) {
@@ -77,6 +81,20 @@ fun AppNavigation(navController: NavHostController) {
         composable(Screen.Userscripts.route) {
             UserscriptManagerScreen(
                 onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable(Screen.Feeds.route) {
+            FeedsScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable(Screen.Onboarding.route) {
+            OnboardingScreen(
+                onComplete = {
+                    navController.navigate(Screen.Browser.route) {
+                        popUpTo(Screen.Onboarding.route) { inclusive = true }
+                    }
+                }
             )
         }
     }

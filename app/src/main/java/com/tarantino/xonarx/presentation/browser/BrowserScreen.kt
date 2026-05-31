@@ -29,6 +29,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.key.*
+import androidx.compose.foundation.focusable
 import com.tarantino.xonarx.domain.model.Tab
 import com.tarantino.xonarx.domain.model.Bookmark
 import com.tarantino.xonarx.presentation.main.MainUiState
@@ -47,7 +49,8 @@ fun BrowserScreen(
     onNavigateToDownloads: () -> Unit,
     onNavigateToNotes: () -> Unit,
     onNavigateToPrivacyStats: () -> Unit,
-    onNavigateToUserscripts: () -> Unit
+    onNavigateToUserscripts: () -> Unit,
+    onNavigateToFeeds: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val preferences by browserViewModel.preferences.collectAsState()
@@ -55,6 +58,19 @@ fun BrowserScreen(
     var isEditingUrl by remember { mutableStateOf(false) }
     var menuExpanded by remember { mutableStateOf(false) }
     var showGroupDialog by remember { mutableStateOf(false) }
+
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val isPipMode = remember(configuration) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+            (context as? android.app.Activity)?.isInPictureInPictureMode == true
+        } else false
+    }
 
     LaunchedEffect(uiState.activeIdentity?.id) {
         uiState.activeIdentity?.id?.let { identityId ->
@@ -106,13 +122,67 @@ fun BrowserScreen(
     }
 
     Scaffold(
+        modifier = Modifier
+            .focusRequester(focusRequester)
+            .focusable()
+            .onPreviewKeyEvent { event ->
+                if (event.isCtrlPressed && event.type == KeyEventType.KeyDown) {
+                    when (event.key) {
+                        Key.T -> {
+                            viewModel.openTab("")
+                            true
+                        }
+                        Key.W -> {
+                            uiState.activeTab?.let { viewModel.closeTab(it) }
+                            true
+                        }
+                        Key.L -> {
+                            isEditingUrl = true
+                            true
+                        }
+                        Key.R -> {
+                            uiState.activeTab?.let {
+                                browserViewModel.sessionManager.getOrCreateSession(it.id, it.identityId).webView?.reload()
+                            }
+                            true
+                        }
+                        Key.H -> {
+                            onNavigateToHistory()
+                            true
+                        }
+                        Key.B -> {
+                            onNavigateToBookmarks()
+                            true
+                        }
+                        Key.J -> {
+                            onNavigateToDownloads()
+                            true
+                        }
+                        else -> false
+                    }
+                } else false
+            },
         topBar = {
-            if (!preferences.bottomControls) {
+            if (!preferences.bottomControls && !isPipMode) {
                 BrowserTopBar(
                     uiState = uiState,
                     isEditingUrl = isEditingUrl,
                     onUrlEditStateChange = { isEditingUrl = it },
-                    onNavigate = { url -> viewModel.navigate(url) },
+                    onNavigate = { url -> 
+                        if (url.startsWith("xonar://")) {
+                            when(url) {
+                                "xonar://settings" -> onNavigateToSettings()
+                                "xonar://history" -> onNavigateToHistory()
+                                "xonar://bookmarks" -> onNavigateToBookmarks()
+                                "xonar://downloads" -> onNavigateToDownloads()
+                                "xonar://notes" -> onNavigateToNotes()
+                                "xonar://userscripts" -> onNavigateToUserscripts()
+                                "xonar://feeds" -> onNavigateToFeeds()
+                            }
+                        } else {
+                            viewModel.navigate(url) 
+                        }
+                    },
                     onSearchQueryChange = { query -> 
                         uiState.activeIdentity?.let { identity -> 
                             browserViewModel.updateSearchQuery(query, identity.id) 
@@ -188,12 +258,26 @@ fun BrowserScreen(
             }
         },
         bottomBar = {
-            if (preferences.bottomControls) {
+            if (preferences.bottomControls && !isPipMode) {
                 BrowserTopBar(
                     uiState = uiState,
                     isEditingUrl = isEditingUrl,
                     onUrlEditStateChange = { isEditingUrl = it },
-                    onNavigate = { url -> viewModel.navigate(url) },
+                    onNavigate = { url -> 
+                        if (url.startsWith("xonar://")) {
+                            when(url) {
+                                "xonar://settings" -> onNavigateToSettings()
+                                "xonar://history" -> onNavigateToHistory()
+                                "xonar://bookmarks" -> onNavigateToBookmarks()
+                                "xonar://downloads" -> onNavigateToDownloads()
+                                "xonar://notes" -> onNavigateToNotes()
+                                "xonar://userscripts" -> onNavigateToUserscripts()
+                                "xonar://feeds" -> onNavigateToFeeds()
+                            }
+                        } else {
+                            viewModel.navigate(url) 
+                        }
+                    },
                     onSearchQueryChange = { query -> 
                         uiState.activeIdentity?.let { identity -> 
                             browserViewModel.updateSearchQuery(query, identity.id) 
@@ -329,7 +413,19 @@ fun BrowserScreen(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clickable {
-                                            viewModel.navigate(url)
+                                            if (url.startsWith("xonar://")) {
+                                                when(url) {
+                                                    "xonar://settings" -> onNavigateToSettings()
+                                                    "xonar://history" -> onNavigateToHistory()
+                                                    "xonar://bookmarks" -> onNavigateToBookmarks()
+                                                    "xonar://downloads" -> onNavigateToDownloads()
+                                                    "xonar://notes" -> onNavigateToNotes()
+                                                    "xonar://userscripts" -> onNavigateToUserscripts()
+                                                    "xonar://feeds" -> onNavigateToFeeds()
+                                                }
+                                            } else {
+                                                viewModel.navigate(url)
+                                            }
                                             isEditingUrl = false
                                         }
                                         .padding(vertical = 10.dp),
@@ -354,7 +450,7 @@ fun BrowserScreen(
 
             // Tab Group Strip
             val activeGroup = activeTab?.groupId?.let { gid -> uiState.tabGroups.find { it.id == gid } }
-            if (activeGroup != null) {
+            if (activeGroup != null && !isPipMode) {
                 val groupTabs = uiState.tabs.filter { it.groupId == activeGroup.id }
                 TabGroupStrip(
                     group = activeGroup,
@@ -380,50 +476,82 @@ fun TabGroupStrip(
     onAddTab: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     Surface(
-        modifier = modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 4.dp
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(8.dp)
+            .clip(RoundedCornerShape(24.dp)),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),
+        tonalElevation = 8.dp,
+        shadowElevation = 8.dp
     ) {
         Column {
-            HorizontalDivider(color = Color(group.color).copy(alpha = 0.5f), thickness = 2.dp)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.size(10.dp).clip(androidx.compose.foundation.shape.CircleShape).background(Color(group.color)))
+                    Spacer(Modifier.width(8.dp))
+                    Text(text = group.name, style = MaterialTheme.typography.labelLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                IconButton(onClick = onAddTab, modifier = Modifier.size(28.dp)) {
+                    Icon(Icons.Default.Add, contentDescription = "New tab in group", tint = Color(group.color))
+                }
+            }
             androidx.compose.foundation.lazy.LazyRow(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 8.dp, horizontal = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    .padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                item {
-                    IconButton(onClick = onAddTab, modifier = Modifier.size(36.dp)) {
-                        Icon(Icons.Default.Add, contentDescription = "New tab in group", tint = Color(group.color))
-                    }
-                }
                 items(tabs.size, key = { tabs[it].id }) { i ->
                     val tab = tabs[i]
                     val isSelected = tab.id == activeTabId
                     Box(
                         modifier = Modifier
-                            .height(36.dp)
-                            .clip(RoundedCornerShape(18.dp))
-                            .background(if (isSelected) Color(group.color).copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant)
-                            .border(1.dp, if (isSelected) Color(group.color) else Color.Transparent, RoundedCornerShape(18.dp))
+                            .width(100.dp)
+                            .height(70.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surface)
+                            .border(2.dp, if (isSelected) Color(group.color) else Color.Transparent, RoundedCornerShape(12.dp))
                             .clickable { onTabSelected(tab) }
-                            .padding(end = 4.dp)
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxHeight()) {
-                            Spacer(Modifier.width(12.dp))
-                            Text(
-                                text = tab.title.ifEmpty { "New Tab" },
-                                style = MaterialTheme.typography.labelMedium,
-                                color = if (isSelected) Color(group.color) else MaterialTheme.colorScheme.onSurface,
-                                maxLines = 1,
-                                modifier = Modifier.widthIn(max = 100.dp)
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            IconButton(onClick = { onTabClosed(tab) }, modifier = Modifier.size(24.dp)) {
-                                Icon(Icons.Default.Close, contentDescription = "Close", modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
+                        coil.compose.AsyncImage(
+                            model = java.io.File(context.filesDir, "preview_${tab.id}.jpg"),
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                            alpha = if (isSelected) 1f else 0.7f
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(androidx.compose.ui.graphics.Brush.verticalGradient(
+                                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f))
+                                ))
+                        )
+                        Text(
+                            text = tab.title.ifEmpty { "New Tab" },
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White,
+                            maxLines = 1,
+                            modifier = Modifier.align(Alignment.BottomStart).padding(6.dp)
+                        )
+                        IconButton(
+                            onClick = { onTabClosed(tab) },
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .size(20.dp)
+                                .padding(2.dp)
+                                .background(Color.Black.copy(alpha = 0.5f), androidx.compose.foundation.shape.CircleShape)
+                        ) {
+                            Icon(Icons.Default.Close, contentDescription = "Close", modifier = Modifier.size(12.dp), tint = Color.White)
                         }
                     }
                 }
