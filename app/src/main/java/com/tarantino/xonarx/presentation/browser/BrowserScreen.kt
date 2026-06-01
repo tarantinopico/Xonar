@@ -1,5 +1,6 @@
 package com.tarantino.xonarx.presentation.browser
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -94,6 +95,40 @@ fun BrowserScreen(
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
             (currentContext as? android.app.Activity)?.isInPictureInPictureMode == true
         } else false
+    }
+
+    val activeWebViewForBack = uiState.activeTab?.id?.let { browserViewModel.sessionManager.getWebView(it) }
+    val canGoBackForBackHandler = activeWebViewForBack?.canGoBack() == true
+
+    BackHandler {
+        val currentTab = uiState.activeTab
+        when {
+            contextualTarget != null -> contextualTarget = null
+            showIdentitySelector -> showIdentitySelector = false
+            showGroupDialog -> showGroupDialog = false
+            showBackHistorySheet -> showBackHistorySheet = false
+            showForwardHistorySheet -> showForwardHistorySheet = false
+            isFindInPageActive -> {
+                isFindInPageActive = false
+                findInPageQuery = ""
+                activeWebViewForBack?.clearMatches()
+            }
+            isEditingUrl -> isEditingUrl = false
+            menuExpanded -> menuExpanded = false
+            canGoBackForBackHandler -> {
+                com.tarantino.xonarx.presentation.util.HapticFeedbackHelper.performLightHaptic(currentContext, preferences.hapticFeedbackEnabled)
+                activeWebViewForBack?.goBack()
+            }
+            uiState.tabs.size > 1 -> {
+                if (currentTab != null) viewModel.closeTab(currentTab)
+            }
+            currentTab?.url == "about:blank" || currentTab?.url?.isEmpty() == true -> {
+                (currentContext as? android.app.Activity)?.moveTaskToBack(true)
+            }
+            else -> {
+                if (currentTab != null) viewModel.closeTab(currentTab)
+            }
+        }
     }
 
     LaunchedEffect(uiState.activeIdentity?.id) {
@@ -286,8 +321,12 @@ fun BrowserScreen(
             },
         topBar = {
             if (!preferences.bottomControls && !isPipMode) {
+                val activeWebView = uiState.activeTab?.id?.let { browserViewModel.sessionManager.getWebView(it) }
+                val canGoBack = activeWebView?.canGoBack() == true
+
                 BrowserTopBar(
                     uiState = uiState,
+                    canGoBack = canGoBack,
                     isEditingUrl = isEditingUrl,
                     onUrlEditStateChange = { isEditingUrl = it },
                     onNavigate = { url -> 
@@ -316,6 +355,18 @@ fun BrowserScreen(
                         }
                         onNavigateToTabSwitcher()
                     },
+                    onBackClick = { 
+                        if (canGoBack) {
+                            com.tarantino.xonarx.presentation.util.HapticFeedbackHelper.performLightHaptic(currentContext, preferences.hapticFeedbackEnabled)
+                            activeWebView?.goBack() 
+                        }
+                    },
+                    onBackLongClick = {
+                        if (canGoBack) {
+                            com.tarantino.xonarx.presentation.util.HapticFeedbackHelper.performLightHaptic(currentContext, preferences.hapticFeedbackEnabled)
+                            showBackHistorySheet = true
+                        }
+                    },
                     onSwipeLeft = { viewModel.switchNextIdentity() },
                     onSwipeRight = { viewModel.switchPreviousIdentity() },
                     menuContent = {
@@ -335,7 +386,10 @@ fun BrowserScreen(
                     canGoForward = canGoForward,
                     tabCount = uiState.tabs.size,
                     onBackClick = {
-                        if (canGoBack) activeWebView?.goBack()
+                        if (canGoBack) {
+                            com.tarantino.xonarx.presentation.util.HapticFeedbackHelper.performLightHaptic(currentContext, preferences.hapticFeedbackEnabled)
+                            activeWebView?.goBack()
+                        }
                     },
                     onBackLongClick = {
                         if (canGoBack) {
@@ -591,7 +645,7 @@ fun BrowserScreen(
             val backForwardList = activeWebView?.copyBackForwardList()
             if (showBackHistorySheet && backForwardList != null) {
                 BrowserHistorySheet(
-                    title = "Back History",
+                    title = androidx.compose.ui.res.stringResource(com.example.R.string.menu_back_history),
                     historyList = backForwardList,
                     currentIndex = backForwardList.currentIndex,
                     isForward = false,
@@ -605,7 +659,7 @@ fun BrowserScreen(
             }
             if (showForwardHistorySheet && backForwardList != null) {
                 BrowserHistorySheet(
-                    title = "Forward History",
+                    title = androidx.compose.ui.res.stringResource(com.example.R.string.menu_forward_history),
                     historyList = backForwardList,
                     currentIndex = backForwardList.currentIndex,
                     isForward = true,
@@ -877,12 +931,15 @@ fun WebViewContainer(
 @Composable
 fun BrowserTopBar(
     uiState: MainUiState,
+    canGoBack: Boolean,
     isEditingUrl: Boolean,
     onUrlEditStateChange: (Boolean) -> Unit,
     onNavigate: (String) -> Unit,
     onSearchQueryChange: (String) -> Unit,
     onMenuClick: () -> Unit,
     onTabCountClick: () -> Unit,
+    onBackClick: () -> Unit,
+    onBackLongClick: () -> Unit,
     onSwipeLeft: () -> Unit,
     onSwipeRight: () -> Unit,
     menuContent: @Composable () -> Unit
@@ -947,6 +1004,17 @@ fun BrowserTopBar(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (!isEditingUrl) {
+                    if (canGoBack) {
+                        DepthCard(
+                            modifier = Modifier.size(40.dp).clip(CircleShape).padding(end = 4.dp),
+                            onClick = onBackClick,
+                            onLongClick = onBackLongClick
+                        ) {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = androidx.compose.ui.res.stringResource(com.example.R.string.action_back), tint = MaterialTheme.colorScheme.onSurface)
+                            }
+                        }
+                    }
                     Box {
                         IconButton(onClick = onMenuClick) {
                             Icon(Icons.Default.MoreVert, contentDescription = "Menu", tint = MaterialTheme.colorScheme.onSurface)

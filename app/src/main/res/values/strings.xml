@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">Xonar</string>
+    <string name="action_back">Back</string>
+    <string name="action_forward">Forward</string>
+    <string name="action_close">Close</string>
+    <string name="menu_back_history">Back History</string>
+    <string name="menu_forward_history">Forward History</string>
 </resources>
