@@ -1,7 +1,9 @@
 package com.tarantino.xonarx.domain.usecase
 
+import android.app.DownloadManager
 import android.content.Context
-import androidx.work.*
+import android.net.Uri
+import android.os.Environment
 import com.tarantino.xonarx.domain.model.DownloadItem
 import com.tarantino.xonarx.domain.model.DownloadStatus
 import com.tarantino.xonarx.domain.repository.DownloadRepository
@@ -16,42 +18,55 @@ import javax.inject.Singleton
 @Singleton
 class DownloadManagerUseCase @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val downloadRepository: DownloadRepository
+    private val repository: DownloadRepository
 ) {
-    fun startDownload(url: String, fileName: String, identityId: String) {
-        val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
-            .build()
+    private val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+    private val scope = CoroutineScope(Dispatchers.IO)
 
-        val inputData = Data.Builder()
-            .putString("URL", url)
-            .putString("IDENTITY_ID", identityId)
-            .build()
+    fun startDownload(url: String, fileName: String, mimeType: String, identityId: String?) {
+        val request = DownloadManager.Request(Uri.parse(url))
+            .setTitle(fileName)
+            .setDescription("Downloading file...")
+            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+            .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
+            .setAllowedOverMetered(true)
+            .setAllowedOverRoaming(true)
 
-        val workRequest = OneTimeWorkRequestBuilder<DownloadWorker>()
-            .setConstraints(constraints)
-            .setInputData(inputData)
-            .build()
-
-        WorkManager.getInstance(context).enqueue(workRequest)
+        val downloadId = downloadManager.enqueue(request)
 
         val item = DownloadItem(
-            id = workRequest.id.toString(),
-            identityId = identityId,
-            url = url,
+            id = downloadId.toString(),
+            sourceUrl = url,
             fileName = fileName,
-            mimeType = "*/*",
-            destinationPath = "",
-            progress = 0,
-            status = DownloadStatus.QUEUED,
+            mimeType = mimeType,
+            destinationPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).absolutePath + "/" + fileName,
+            totalBytes = 0L,
+            downloadedBytes = 0L,
+            speedBytesPerSecond = 0L,
+            etaSeconds = -1L,
+            status = DownloadStatus.PENDING,
             scheduledAt = System.currentTimeMillis(),
             startedAt = null,
             completedAt = null,
-            errorMessage = null
+            errorMessage = null,
+            identityId = identityId
         )
+        
+        scope.launch {
+            repository.addDownload(item)
+        }
+    }
+    
+    fun observeAllDownloads() = repository.observeAllDownloads()
 
-        CoroutineScope(Dispatchers.IO).launch {
-            downloadRepository.addDownload(item)
+    // Stub for pausing/resuming as DownloadManager handles it mostly natively, 
+    // but we can remove/cancel.
+    fun cancelDownload(id: String) {
+        downloadManager.remove(id.toLong())
+        scope.launch {
+            repository.getDownloadById(id)?.let {
+                repository.updateDownload(it.copy(status = DownloadStatus.CANCELLED))
+            }
         }
     }
 }

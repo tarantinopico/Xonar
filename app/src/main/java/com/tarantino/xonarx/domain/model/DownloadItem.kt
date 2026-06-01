@@ -1,20 +1,23 @@
 package com.tarantino.xonarx.domain.model
 
+enum class DownloadStatus {
+    PENDING, DOWNLOADING, PAUSED, COMPLETED, FAILED, CANCELLED
+}
+
 data class DownloadItem(
     val id: String,
-    val identityId: String,
-    val url: String,
+    val sourceUrl: String,
     val fileName: String,
     val mimeType: String,
     val destinationPath: String,
-    val progress: Int,
+    val totalBytes: Long,
+    val downloadedBytes: Long,
+    val speedBytesPerSecond: Long,
+    val etaSeconds: Long,
     val status: DownloadStatus,
     val scheduledAt: Long,
     val startedAt: Long?,
     val completedAt: Long?,
-    val errorMessage: String?
+    val errorMessage: String?,
+    val identityId: String?
 )
-
-enum class DownloadStatus {
-    QUEUED, DOWNLOADING, PAUSED, COMPLETED, FAILED, CANCELLED
-}
