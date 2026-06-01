@@ -48,6 +48,14 @@ class SettingsRepositoryImpl @Inject constructor(
 
         val SMART_URL_COPY = booleanPreferencesKey("smart_url_copy")
         val BACKGROUND_VIDEO_PLAYBACK = booleanPreferencesKey("background_video_playback")
+        
+        // Downloads
+        val DEFAULT_DOWNLOAD_FOLDER = stringPreferencesKey("default_download_folder")
+        val ASK_BEFORE_DOWNLOADING = booleanPreferencesKey("ask_before_downloading")
+        val WIFI_ONLY_DOWNLOADS = booleanPreferencesKey("wifi_only_downloads")
+        val AUTO_OPEN_AFTER_DOWNLOAD = booleanPreferencesKey("auto_open_after_download")
+        val SHOW_DOWNLOAD_NOTIFICATIONS = booleanPreferencesKey("show_download_notifications")
+        val DUPLICATE_BEHAVIOR = stringPreferencesKey("duplicate_behavior")
     }
 
     override val preferences: Flow<AppPreferences> = context.dataStore.data.map { prefs ->
@@ -78,7 +86,13 @@ class SettingsRepositoryImpl @Inject constructor(
             defaultPageZoom = prefs[Keys.DEFAULT_PAGE_ZOOM] ?: 100,
             thumbnailSize = prefs[Keys.THUMBNAIL_SIZE] ?: "medium",
             smartUrlCopyEnabled = prefs[Keys.SMART_URL_COPY] ?: true,
-            backgroundVideoPlayback = prefs[Keys.BACKGROUND_VIDEO_PLAYBACK] ?: false
+            backgroundVideoPlayback = prefs[Keys.BACKGROUND_VIDEO_PLAYBACK] ?: false,
+            defaultDownloadFolder = prefs[Keys.DEFAULT_DOWNLOAD_FOLDER] ?: "downloads",
+            askBeforeDownloading = prefs[Keys.ASK_BEFORE_DOWNLOADING] ?: true,
+            wifiOnlyDownloads = prefs[Keys.WIFI_ONLY_DOWNLOADS] ?: false,
+            autoOpenAfterDownload = prefs[Keys.AUTO_OPEN_AFTER_DOWNLOAD] ?: false,
+            showDownloadNotifications = prefs[Keys.SHOW_DOWNLOAD_NOTIFICATIONS] ?: true,
+            duplicateBehavior = prefs[Keys.DUPLICATE_BEHAVIOR] ?: "ask"
         )
     }
 
@@ -216,6 +230,30 @@ class SettingsRepositoryImpl @Inject constructor(
 
     override suspend fun updateBackgroundVideoPlayback(enabled: Boolean) {
         context.dataStore.edit { prefs -> prefs[Keys.BACKGROUND_VIDEO_PLAYBACK] = enabled }
+    }
+
+    override suspend fun updateDefaultDownloadFolder(folder: String) {
+        context.dataStore.edit { prefs -> prefs[Keys.DEFAULT_DOWNLOAD_FOLDER] = folder }
+    }
+
+    override suspend fun updateAskBeforeDownloading(enabled: Boolean) {
+        context.dataStore.edit { prefs -> prefs[Keys.ASK_BEFORE_DOWNLOADING] = enabled }
+    }
+
+    override suspend fun updateWifiOnlyDownloads(enabled: Boolean) {
+        context.dataStore.edit { prefs -> prefs[Keys.WIFI_ONLY_DOWNLOADS] = enabled }
+    }
+
+    override suspend fun updateAutoOpenAfterDownload(enabled: Boolean) {
+        context.dataStore.edit { prefs -> prefs[Keys.AUTO_OPEN_AFTER_DOWNLOAD] = enabled }
+    }
+
+    override suspend fun updateShowDownloadNotifications(enabled: Boolean) {
+        context.dataStore.edit { prefs -> prefs[Keys.SHOW_DOWNLOAD_NOTIFICATIONS] = enabled }
+    }
+
+    override suspend fun updateDuplicateBehavior(behavior: String) {
+        context.dataStore.edit { prefs -> prefs[Keys.DUPLICATE_BEHAVIOR] = behavior }
     }
 }
 

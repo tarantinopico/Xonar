@@ -1237,6 +1237,13 @@ fun BrowserMenu(
                 }
                 item {
                     BrowserMenuAction(
+                        icon = Icons.Default.Download,
+                        label = "Downloads",
+                        onClick = { onNavigateToDownloads(); onDismiss() }
+                    )
+                }
+                item {
+                    BrowserMenuAction(
                         icon = Icons.Default.Settings,
                         label = "Settings",
                         onClick = { onNavigateToSettings(); onDismiss() }

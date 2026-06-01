@@ -35,7 +35,15 @@ data class AppPreferences(
 
     // Utilities
     val smartUrlCopyEnabled: Boolean = true,
-    val backgroundVideoPlayback: Boolean = false
+    val backgroundVideoPlayback: Boolean = false,
+
+    // Downloads
+    val defaultDownloadFolder: String = "downloads",
+    val askBeforeDownloading: Boolean = true,
+    val wifiOnlyDownloads: Boolean = false,
+    val autoOpenAfterDownload: Boolean = false,
+    val showDownloadNotifications: Boolean = true,
+    val duplicateBehavior: String = "ask" // ask, overwrite, rename
 )
 
 enum class ThemeMode { LIGHT, DARK, SYSTEM }
@@ -68,5 +76,13 @@ interface SettingsRepository {
 
     suspend fun updateSmartUrlCopyEnabled(enabled: Boolean)
     suspend fun updateBackgroundVideoPlayback(enabled: Boolean)
+
+    // Downloads
+    suspend fun updateDefaultDownloadFolder(folder: String)
+    suspend fun updateAskBeforeDownloading(enabled: Boolean)
+    suspend fun updateWifiOnlyDownloads(enabled: Boolean)
+    suspend fun updateAutoOpenAfterDownload(enabled: Boolean)
+    suspend fun updateShowDownloadNotifications(enabled: Boolean)
+    suspend fun updateDuplicateBehavior(behavior: String)
 }
 

@@ -135,6 +135,24 @@ class SettingsViewModel @Inject constructor(
             settingsRepository.updateBackgroundVideoPlayback(enabled)
         }
     }
+
+    fun toggleAskBeforeDownloading(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateAskBeforeDownloading(enabled)
+        }
+    }
+
+    fun toggleWifiOnlyDownloads(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateWifiOnlyDownloads(enabled)
+        }
+    }
+
+    fun toggleShowDownloadNotifications(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateShowDownloadNotifications(enabled)
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -306,6 +324,41 @@ fun SettingsScreen(
                     }
                 }
                 
+                item {
+                    SettingsCategory(title = "Downloads") {
+                        SettingsItem(
+                            title = "Ask Before Downloading",
+                            subtitle = "Show confirmation dialog",
+                            trailing = {
+                                Switch(
+                                    checked = prefs.askBeforeDownloading,
+                                    onCheckedChange = { viewModel.toggleAskBeforeDownloading(it) }
+                                )
+                            }
+                        )
+                        SettingsItem(
+                            title = "Wi-Fi Only Downloads",
+                            subtitle = "Pause downloads on mobile data",
+                            trailing = {
+                                Switch(
+                                    checked = prefs.wifiOnlyDownloads,
+                                    onCheckedChange = { viewModel.toggleWifiOnlyDownloads(it) }
+                                )
+                            }
+                        )
+                        SettingsItem(
+                            title = "Show Notifications",
+                            subtitle = "Display progress in status bar",
+                            trailing = {
+                                Switch(
+                                    checked = prefs.showDownloadNotifications,
+                                    onCheckedChange = { viewModel.toggleShowDownloadNotifications(it) }
+                                )
+                            }
+                        )
+                    }
+                }
+
                 item {
                     SettingsCategory(title = "Data & Privacy") {
                         SettingsItem(

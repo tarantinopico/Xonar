@@ -2,6 +2,8 @@ package com.tarantino.xonarx.di
 
 import com.tarantino.xonarx.data.repository.*
 import com.tarantino.xonarx.domain.repository.*
+import com.tarantino.xonarx.data.download.XonarDownloadManagerImpl
+import com.tarantino.xonarx.domain.download.XonarDownloadManager
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -43,4 +45,8 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindDownloadRepository(impl: DownloadRepositoryImpl): DownloadRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindXonarDownloadManager(impl: XonarDownloadManagerImpl): XonarDownloadManager
 }
