@@ -1,21 +1,55 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# Xonar Browser
 
-# Run and deploy your AI Studio app
+Xonar is a modern, privacy-first Android browser built with Jetpack Compose and Kotlin.
+It features strict Identity Isolation to keep your browsing sessions, tabs, history, and downloads separated by user-defined contexts.
 
-This contains everything you need to run your app locally.
+## Architecture
 
-View your app in AI Studio: https://ai.studio/apps/cb47762a-765d-4e65-89b5-408e8b5733e8
+Xonar relies on modern Android development practices:
+- **UI:** Jetpack Compose (Material Design 3)
+- **Dependency Injection:** Hilt
+- **Local Storage:** Room Database and DataStore
+- **Concurrency & Async Tasking:** Kotlin Coroutines and WorkManager
+- **Web Rendering:** WebKit via Android WebView
 
-## Run Locally
+## Key Features
 
-**Prerequisites:**  [Android Studio](https://developer.android.com/studio)
+1. **Identity Isolation:** Manage independent sessions (Work, Personal, Shopping, etc.).
+2. **Ad & Tracker Blocking:** Uses a custom WebViewClient interception engine.
+3. **Biometric Security:** Identities can be locked with Fingerprint/Face Unlock via `BiometricPrompt`.
+4. **Download Manager:** Uses WorkManager for background downloading per-identity.
+5. **Reader Mode:** Dynamically re-styles web pages via JavaScript evaluation.
+6. **Gesture Navigation:** Swipe to go back/forward in tabs.
+7. **Privacy Controls:** Data clearing and incognito template support.
+8. **Extension-Ready:** Domain architecture is laid out for future plugin integration.
 
+## Build Instructions
 
-1. Open Android Studio
-2. Select **Open** and choose the directory containing this project
-3. Allow Android Studio to fix any incompatibilities as it imports the project.
-4. Create a file named `.env` in the project directory and set `GEMINI_API_KEY` in that file to your Gemini API key (see `.env.example` for an example)
-5. Remove this line from the app's `build.gradle.kts` file: `signingConfig = signingConfigs.getByName("debugConfig")`
-6. Run the app on an emulator or physical device
+To build Xonar, open the project in Android Studio or run the following Gradle task:
+
+```bash
+./gradlew assembleDebug
+```
+
+## Note on WebView
+
+Xonar allocates independent profiles using `androidx.webkit.ProfileStore` to guarantee absolute data isolation. Each identity utilizes a separate storage footprint on the disk.
+
+## Testing Strategy
+
+The complete test suite verifies core business rules and behavior without brittle UI assumptions. This includes:
+- **Unit Tests:** Run locally utilizing JUnit 4, verifying `IdentityManager` logic and repositories.
+- **Mocking:** Utilization of `MockK` for validating dependencies.
+- **Coroutines:** Use of `kotlinx-coroutines-test` for flow and async emissions.
+
+Testing is split across domain verification and UI-focused instrumentation. Run via `./gradlew test`.
+
+## Privacy and Security Notes
+
+Xonar is built to act natively inside the constraint boundaries of Android 12+ (API 34 compliant)
+- Uses secure biometrics prompt abstractions which fallback appropriately to user credentials if strong biometrics are absent.
+- Clears WebView active references intelligently during memory pressure and lifecycle callbacks.
+
+## Extension-Ready Architecture
+
+The domain scaffolding currently acts defensively. Abstractions such as `ReaderModeEngine`, `AdBlockerEngine`, and future URL interceptors lie within clean generic interfaces so adding 3rd party plugins down the line is seamless without re-architecting the web views framework.
